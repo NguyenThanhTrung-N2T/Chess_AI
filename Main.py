@@ -7,7 +7,7 @@ from tkinter import ttk
 class Main:
     def __init__(self, root):
         self.root = root
-        root.resizable(True,False)
+        root.resizable(False,False)
         self.root.title("Chess AI")
         self.style = ttk.Style(root)
         self.style.theme_use('clam')

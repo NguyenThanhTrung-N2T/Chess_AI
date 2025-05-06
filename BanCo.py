@@ -3,9 +3,9 @@ import tkinter as tk
 class BanCo:
     def __init__(self, canvas, size=50):
         self.canvas = canvas
-        self.size = size  # Kích thước mỗi ô
-        self.board_size = 8  # 8x8 ô
-        self.colors = ['#f0d9b5', '#b58863']  # Màu ô bàn cờ
+        self.size = size
+        self.board_size = 8
+        self.colors = ['#f0d9b5', '#b58863']  # màu sáng và tối xen kẽ
         self.kiem_tra_canvas()
         self.ve_ban_co()
 
@@ -14,7 +14,7 @@ class BanCo:
             raise ValueError("Canvas không hợp lệ hoặc chưa khởi tạo!")
 
     def ve_ban_co(self):
-        self.canvas.delete("all")  # Xóa nếu có bàn cờ cũ
+        self.canvas.delete("all")  # Xóa các phần tử cũ
         for row in range(self.board_size):
             for col in range(self.board_size):
                 x1 = col * self.size
