@@ -3,7 +3,7 @@ import pygame
 import os
 
 class Board:
-    def __init__(self, screen, size=50):
+    def __init__(self, screen, size=100):
         self.screen = screen
         self.size = size
         self.colors = [(240, 217, 181), (181, 136, 99)]  # RGB cho #f0d9b5 và #b58863
@@ -26,16 +26,15 @@ class Board:
                     print(f"Không tìm thấy hình ảnh: {path}")
         return images
 
-    def draw_board(self, screen_width, screen_height):
-        size = min(screen_width, screen_height)
+    def draw_board(self, offset_x=0, offset_y=0):
         for row in range(8):
             for col in range(8):
                 color = self.colors[(row + col) % 2]
-                rect = pygame.Rect(col * self.size, row * self.size, self.size, self.size)
+                rect = pygame.Rect(offset_x + col * self.size, offset_y + row * self.size, self.size, self.size)
                 pygame.draw.rect(self.screen, color, rect)
-        return size
 
-    def draw_pieces(self, size):
+
+    def draw_pieces(self, offset_x=0, offset_y=0):
         for row in range(8):
             for col in range(8):
                 piece = self.board[row][col]
@@ -44,9 +43,8 @@ class Board:
                     key = f"{color}_{piece['type']}"
                     image = self.images.get(key)
                     if image:
-                        # Điều chỉnh kích thước quân cờ theo ô cờ
-                        image = pygame.transform.scale(image, (size, size))
-                        self.screen.blit(image, (col * size, row * size))
+                        self.screen.blit(image, (offset_x + col * self.size, offset_y + row * self.size))
+
 
     def create_initial_board(self):
         def create_piece(type, color):

@@ -1,3 +1,4 @@
+
 import pygame
 from BanCo import Board
 
@@ -14,7 +15,7 @@ def draw_menu(screen):
     screen.blit(background_image, (0, 0))  # VẼ ẢNH NỀN TRƯỚC
 
     # Sau đó vẽ các thành phần giao diện khác
-    font = pygame.font.SysFont("Arial", 36, bold=True)
+    font = pygame.font.SysFont("Arial", 50, bold=True)
     title_text = font.render("Choose a game mode", True, (80, 84, 24))
     button_font = pygame.font.SysFont("Arial", 28, bold=True)
 
@@ -83,8 +84,52 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
 
-        board.draw_board()
-        board.draw_pieces()
+        screen.fill((239, 249, 253))  # Xóa nền trước khi vẽ lại
+        # Vẽ bàn cờ từ góc trái
+        board.draw_board(offset_x=0, offset_y=0)
+        board.draw_pieces(offset_x=0, offset_y=0)
+
+        # Vẽ panel phải (200px còn lại)
+        pygame.draw.rect(screen, (239, 249,253), (800, 0, 200, 800))  # Khung bên phải
+
+        # Load icon cho New Game
+        icon_newgame = pygame.image.load("assets/new_game.png")
+        icon_newgame = pygame.transform.scale(icon_newgame, (40, 40))
+
+        # Vẽ button New Game
+        button_font = pygame.font.SysFont("Arial", 28, bold=True)
+        button_color = (100, 150, 250)
+        button_newgame = pygame.Rect(810, 100, 180, 50)
+        pygame.draw.rect(screen, button_color, button_newgame, border_radius=10)
+        screen.blit(icon_newgame, (button_newgame.x + 10, button_newgame.y + 5))
+        text_newgame = button_font.render("New Game", True, (255, 255, 255))
+        screen.blit(text_newgame, (button_newgame.x + 60, button_newgame.y + 10))
+
+        # Load icon cho Undo và Reset
+        icon_undo = pygame.image.load("assets/undo.png")
+        icon_reset = pygame.image.load("assets/reset.png")
+        icon_undo = pygame.transform.scale(icon_undo, (40, 40))
+        icon_reset = pygame.transform.scale(icon_reset, (40, 40))
+
+        # Font giống như các button cũ
+        button_font = pygame.font.SysFont("Arial", 28, bold=True)
+
+        # Undo button
+        button_undo = pygame.Rect(810, 180, 180, 50)
+        pygame.draw.rect(screen, button_color, button_undo, border_radius=10)
+        screen.blit(icon_undo, (button_undo.x + 10, button_undo.y + 5))
+        text_undo = button_font.render("Undo", True, (255, 255, 255))
+        text_undo_rect = text_undo.get_rect(center=(button_undo.centerx + 15, button_undo.centery))
+        screen.blit(text_undo, text_undo_rect)
+
+        # Reset button
+        button_reset = pygame.Rect(810, 260, 180, 50)
+        pygame.draw.rect(screen, button_color, button_reset, border_radius=10)
+        screen.blit(icon_reset, (button_reset.x + 10, button_reset.y + 5))
+        text_reset = button_font.render("Reset", True, (255, 255, 255))
+        text_reset_rect = text_reset.get_rect(center=(button_reset.centerx + 10, button_reset.centery))
+        screen.blit(text_reset, text_reset_rect)
+
         pygame.display.flip()
         clock.tick(60)
 
