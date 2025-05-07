@@ -1,4 +1,4 @@
-class NuocDi:
+class Move:
     def __init__(self, from_pos, to_pos, piece, captured=None, had_moved=False, 
                  is_castling=False, is_en_passant=False, promotion=None):
         """
@@ -23,4 +23,4 @@ class NuocDi:
         self.promotion = promotion     # Nếu phong cấp, loại quân mới (Queen, Rook, ...)
 
     def __repr__(self):
-        return f"NuocDi({self.from_pos} -> {self.to_pos}, Piece: {self.piece})"
+        return f"Move({self.from_pos} -> {self.to_pos}, Piece: {self.piece})"

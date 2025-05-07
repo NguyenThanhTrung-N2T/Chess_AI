@@ -73,7 +73,6 @@ def draw_menu(screen):
                     if btn["rect"].collidepoint(mouse_pos):
                         selected_mode = btn["mode"]
                         running = False
-
     return selected_mode
 
 def main():
@@ -89,7 +88,7 @@ def main():
     print("Selected mode:", mode)
 
     # Khởi tạo bàn cờ
-    board = Board(screen, size=100)
+    board = Board(screen)
 
     # Vòng lặp chính
     running = True
@@ -97,6 +96,12 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mouse_x, mouse_y = pygame.mouse.get_pos()
+                if mouse_x < 800:  # Chỉ xử lý vùng bàn cờ
+                    row = mouse_y // board.cell_size
+                    col = mouse_x // board.cell_size
+                    board.handle_click(row, col)
 
         screen.fill((239, 249, 253))
 
