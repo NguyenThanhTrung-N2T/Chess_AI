@@ -6,9 +6,10 @@ class Board:
     def __init__(self, screen, size=100):
         self.screen = screen
         self.size = size
-        self.cell_size = size 
+        self.cell_size = size
         self.colors = [(240, 217, 181), (181, 136, 99)]  # Màu bàn cờ
         self.selected_piece = None  # (piece, from_row, from_col)
+        self.selected_square = None  # (row, col) của quân cờ đã chọn
         self.images = self.load_images()
         self.board = self.create_initial_board()
 
@@ -34,6 +35,10 @@ class Board:
                 color = self.colors[(row + col) % 2]
                 rect = pygame.Rect(offset_x + col * self.size, offset_y + row * self.size, self.size, self.size)
                 pygame.draw.rect(self.screen, color, rect)
+
+                # Vẽ viền cho ô chứa quân cờ được chọn
+                if self.selected_square == (row, col):
+                    pygame.draw.rect(self.screen, (255, 0, 0), rect, 5)  # Màu viền đỏ
 
     def draw_pieces(self, offset_x=0, offset_y=0):
         for row in range(8):
@@ -83,17 +88,37 @@ class Board:
         piece = self.get_piece_at(row, col)
 
         if self.selected_piece is None:
+            # Nếu không có quân cờ nào được chọn và có quân cờ tại ô click
             if piece is not None:
                 self.selected_piece = (piece, row, col)
+                self.selected_square = (row, col)  # Lưu vị trí ô quân cờ được chọn
                 print(f"Selected piece at ({row}, {col}): {piece.loai} {piece.mau}")
         else:
             selected_piece, from_row, from_col = self.selected_piece
-            # Di chuyển đến ô mới
+
+            # Nếu click vào chính quân đã chọn, bỏ chọn nó
+            if self.selected_square == (row, col):
+                print(f"Unselected piece at ({row}, {col}): {selected_piece.loai} {selected_piece.mau}")
+                self.selected_piece = None
+                self.selected_square = None  # Bỏ chọn quân cờ
+                return
+
+            # Nếu chọn quân cờ khác cùng màu, bỏ chọn quân cũ và chọn quân mới
+            if piece is not None and piece.mau == selected_piece.mau:
+                print(f"Selected new piece at ({row}, {col}): {piece.loai} {piece.mau}")
+                self.selected_piece = (piece, row, col)
+                self.selected_square = (row, col)  # Chọn quân cờ mới
+                return
+
+            # Di chuyển quân cờ đến ô mới
             self.board[row][col] = selected_piece
             self.board[from_row][from_col] = None
             selected_piece.da_di = True
             print(f"Moved {selected_piece.loai} from ({from_row},{from_col}) to ({row},{col})")
+
+            # Sau khi di chuyển, bỏ chọn quân cờ
             self.selected_piece = None
+            self.selected_square = None
 
     def get_piece_at(self, row, col):
         if 0 <= row < 8 and 0 <= col < 8:
