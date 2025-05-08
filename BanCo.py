@@ -1,6 +1,7 @@
 import pygame
 import os
 from QuanCo import Piece
+import chess  # Thư viện chess để quản lý bàn cờ logic
 
 class Board:
     def __init__(self, screen, size=100):
@@ -12,6 +13,7 @@ class Board:
         self.selected_square = None  # (row, col) của quân cờ đã chọn
         self.images = self.load_images()
         self.board = self.create_initial_board()
+        self.chess_board = chess.Board() # Tạo một bàn cờ logic từ thư viện chess
 
     def load_images(self):
         pieces = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king']
@@ -88,37 +90,45 @@ class Board:
         piece = self.get_piece_at(row, col)
 
         if self.selected_piece is None:
-            # Nếu không có quân cờ nào được chọn và có quân cờ tại ô click
             if piece is not None:
                 self.selected_piece = (piece, row, col)
-                self.selected_square = (row, col)  # Lưu vị trí ô quân cờ được chọn
+                self.selected_square = (row, col)
                 print(f"Selected piece at ({row}, {col}): {piece.loai} {piece.mau}")
         else:
             selected_piece, from_row, from_col = self.selected_piece
 
-            # Nếu click vào chính quân đã chọn, bỏ chọn nó
             if self.selected_square == (row, col):
                 print(f"Unselected piece at ({row}, {col}): {selected_piece.loai} {selected_piece.mau}")
                 self.selected_piece = None
-                self.selected_square = None  # Bỏ chọn quân cờ
+                self.selected_square = None
                 return
 
-            # Nếu chọn quân cờ khác cùng màu, bỏ chọn quân cũ và chọn quân mới
             if piece is not None and piece.mau == selected_piece.mau:
                 print(f"Selected new piece at ({row}, {col}): {piece.loai} {piece.mau}")
                 self.selected_piece = (piece, row, col)
-                self.selected_square = (row, col)  # Chọn quân cờ mới
+                self.selected_square = (row, col)
                 return
 
-            # Di chuyển quân cờ đến ô mới
-            self.board[row][col] = selected_piece
-            self.board[from_row][from_col] = None
-            selected_piece.da_di = True
-            print(f"Moved {selected_piece.loai} from ({from_row},{from_col}) to ({row},{col})")
+            # Chuyển tọa độ từ row, col sang notation 'e2', 'e4' (dành cho python-chess)
+            import chess
+            from_square = chess.square(from_col, 7 - from_row)
+            to_square = chess.square(col, 7 - row)
+            move = chess.Move(from_square, to_square)
 
-            # Sau khi di chuyển, bỏ chọn quân cờ
+            if move in self.chess_board.legal_moves:
+                self.chess_board.push(move)
+
+                # Di chuyển quân cờ trong self.board
+                self.board[row][col] = selected_piece
+                self.board[from_row][from_col] = None
+                selected_piece.da_di = True
+                print(f"Moved {selected_piece.loai} from ({from_row},{from_col}) to ({row},{col})")
+            else:
+                print(f"Nước đi không hợp lệ từ ({from_row},{from_col}) đến ({row},{col})")
+
             self.selected_piece = None
             self.selected_square = None
+
 
     def get_piece_at(self, row, col):
         if 0 <= row < 8 and 0 <= col < 8:
