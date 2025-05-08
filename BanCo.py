@@ -69,10 +69,11 @@ class Board:
         square = chess.square(col, 7 - row)
 
         if self.selected_square is None:
-            piece = self.chess_board.piece_at(square)
-            if piece and piece.color == self.chess_board.turn:
+            if self.is_valid_selection(row, col):
                 self.selected_square = (row, col)
                 print(f"Selected piece at ({row},{col})")
+            else:
+                print(f"Không thể chọn ô ({row},{col})")
         else:
             from_row, from_col = self.selected_square
             from_square = chess.square(from_col, 7 - from_row)
@@ -80,13 +81,10 @@ class Board:
             move = chess.Move(from_square, to_square)
 
             if move in self.chess_board.legal_moves:
-                # Lưu lại nước đi vào lịch sử
-                self.move_history.append(self.chess_board.san(move))  # Lưu dạng chữ cho nước đi
-
+                self.move_history.append(self.chess_board.san(move))
                 self.chess_board.push(move)
                 print(f"Moved from ({from_row},{from_col}) to ({row},{col})")
 
-                # Cập nhật vị trí vua bị chiếu nếu có
                 if self.chess_board.is_check():
                     king_sq = self.chess_board.king(self.chess_board.turn)
                     row_check = 7 - chess.square_rank(king_sq)
@@ -98,6 +96,11 @@ class Board:
                 print(f"Nước đi không hợp lệ từ ({from_row},{from_col}) đến ({row},{col})")
 
             self.selected_square = None
+
+    def is_valid_selection(self, row, col):
+        square = chess.square(col, 7 - row)
+        piece = self.chess_board.piece_at(square)
+        return piece is not None and piece.color == self.chess_board.turn
 
     def reset_game(self):
         self.chess_board = chess.Board()
