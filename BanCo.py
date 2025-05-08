@@ -71,6 +71,49 @@ class Board:
                     if image:
                         self.screen.blit(image, (offset_x + col * self.cell_size, offset_y + row * self.cell_size))
 
+    def show_promotion_menu(self):
+        overlay = pygame.Surface((400, 400))  # lớp nền menu
+        overlay.set_alpha(230)  # Độ trong suốt
+        overlay.fill((50, 50, 50))  # Màu nền mờ
+        
+        button_font = pygame.font.SysFont("Arial", 28, bold=True)
+        button_color = (100, 150, 250)
+        text_color = (255, 255, 255)
+
+        btn_queen = pygame.Rect(50, 50, 300, 50)
+        btn_rook = pygame.Rect(50, 130, 300, 50)
+        btn_bishop = pygame.Rect(50, 210, 300, 50)
+        btn_knight = pygame.Rect(50, 290, 300, 50)
+
+        while True:
+            self.screen.blit(overlay, (0, 0))  # vẽ overlay lên màn hình chính
+            pygame.draw.rect(self.screen, button_color, btn_queen)
+            pygame.draw.rect(self.screen, button_color, btn_rook)
+            pygame.draw.rect(self.screen, button_color, btn_bishop)
+            pygame.draw.rect(self.screen, button_color, btn_knight)
+
+            self.screen.blit(button_font.render("Phong Hậu (Q)", True, text_color), (90, 60))
+            self.screen.blit(button_font.render("Phong Xe (R)", True, text_color), (90, 140))
+            self.screen.blit(button_font.render("Phong Tượng (B)", True, text_color), (90, 220))
+            self.screen.blit(button_font.render("Phong Mã (N)", True, text_color), (90, 300))
+
+            pygame.display.flip()
+
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    exit()
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if btn_queen.collidepoint(event.pos):
+                        return chess.QUEEN
+                    elif btn_rook.collidepoint(event.pos):
+                        return chess.ROOK
+                    elif btn_bishop.collidepoint(event.pos):
+                        return chess.BISHOP
+                    elif btn_knight.collidepoint(event.pos):
+                        return chess.KNIGHT
+
+
     def handle_click(self, row, col):
         if self.game_over:
             return
@@ -88,10 +131,20 @@ class Board:
             to_square = square
             move = chess.Move(from_square, to_square)
 
-            # Phong cấp nếu là tốt đi đến cuối bàn
-            if self.chess_board.piece_at(from_square).piece_type == chess.PAWN:
-                if chess.square_rank(to_square) in [0, 7]:
-                    move = chess.Move(from_square, to_square, promotion=chess.QUEEN)
+            piece = self.chess_board.piece_at(from_square)
+
+            if piece.piece_type == chess.PAWN and chess.square_rank(to_square) in [0, 7]:
+                # Hiển thị overlay menu chọn quân phong cấp ngay trên cửa sổ hiện tại
+                promotion_piece = self.show_promotion_menu()
+
+                # Không cần gọi lại set_mode!
+                move = chess.Move(from_square, to_square, promotion=promotion_piece)
+            else:
+                move = chess.Move(from_square, to_square)
+
+
+
+
 
             if move in self.chess_board.legal_moves:
                 if self.chess_board.is_castling(move):
@@ -117,7 +170,6 @@ class Board:
                 self.status_message = ">> Nước đi không hợp lệ."
 
             self.selected_square = None
-
 
     def is_valid_selection(self, row, col):
         square = chess.square(col, 7 - row)
