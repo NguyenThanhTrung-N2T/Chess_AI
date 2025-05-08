@@ -72,12 +72,12 @@ class Board:
                         self.screen.blit(image, (offset_x + col * self.cell_size, offset_y + row * self.cell_size))
 
     def show_promotion_menu(self):
-        overlay = pygame.Surface((400, 400))  # lớp nền menu
-        overlay.set_alpha(230)  # Độ trong suốt
-        overlay.fill((50, 50, 50))  # Màu nền mờ
-        
+        overlay = pygame.Surface((400, 400))
+        overlay.set_alpha(230)
+        overlay.fill((241, 218, 91))
+
         button_font = pygame.font.SysFont("Arial", 28, bold=True)
-        button_color = (100, 150, 250)
+        button_color = (247, 81, 90)
         text_color = (255, 255, 255)
 
         btn_queen = pygame.Rect(50, 50, 300, 50)
@@ -85,17 +85,43 @@ class Board:
         btn_bishop = pygame.Rect(50, 210, 300, 50)
         btn_knight = pygame.Rect(50, 290, 300, 50)
 
+        # Load và resize icon
+        queen_icon = pygame.image.load("images/queen.png")
+        rook_icon = pygame.image.load("images/rook.png")
+        bishop_icon = pygame.image.load("images/bishop.png")
+        knight_icon = pygame.image.load("images/knight.png")
+
+        icon_size = (32, 32)
+        queen_icon = pygame.transform.scale(queen_icon, icon_size)
+        rook_icon = pygame.transform.scale(rook_icon, icon_size)
+        bishop_icon = pygame.transform.scale(bishop_icon, icon_size)
+        knight_icon = pygame.transform.scale(knight_icon, icon_size)
+
         while True:
-            self.screen.blit(overlay, (0, 0))  # vẽ overlay lên màn hình chính
+            self.screen.blit(overlay, (0, 0))
+
             pygame.draw.rect(self.screen, button_color, btn_queen)
             pygame.draw.rect(self.screen, button_color, btn_rook)
             pygame.draw.rect(self.screen, button_color, btn_bishop)
             pygame.draw.rect(self.screen, button_color, btn_knight)
 
-            self.screen.blit(button_font.render("Phong Hậu (Q)", True, text_color), (90, 60))
-            self.screen.blit(button_font.render("Phong Xe (R)", True, text_color), (90, 140))
-            self.screen.blit(button_font.render("Phong Tượng (B)", True, text_color), (90, 220))
-            self.screen.blit(button_font.render("Phong Mã (N)", True, text_color), (90, 300))
+            def draw_button(rect, icon, text):
+                text_surface = button_font.render(text, True, text_color)
+                spacing = 10
+                total_width = icon.get_width() + spacing + text_surface.get_width()
+
+                # Tính điểm bắt đầu để căn giữa cụm icon + text trong button
+                start_x = rect.x + (rect.width - total_width) // 2
+                icon_y = rect.y + (rect.height - icon.get_height()) // 2
+                text_y = rect.y + (rect.height - text_surface.get_height()) // 2
+
+                self.screen.blit(icon, (start_x, icon_y))
+                self.screen.blit(text_surface, (start_x + icon.get_width() + spacing, text_y))
+
+            draw_button(btn_queen, queen_icon, "Queen")
+            draw_button(btn_rook, rook_icon, "Rook")
+            draw_button(btn_bishop, bishop_icon, "Bishop")
+            draw_button(btn_knight, knight_icon, "Knight")
 
             pygame.display.flip()
 
@@ -112,6 +138,9 @@ class Board:
                         return chess.BISHOP
                     elif btn_knight.collidepoint(event.pos):
                         return chess.KNIGHT
+
+
+
 
 
     def handle_click(self, row, col):
@@ -141,10 +170,6 @@ class Board:
                 move = chess.Move(from_square, to_square, promotion=promotion_piece)
             else:
                 move = chess.Move(from_square, to_square)
-
-
-
-
 
             if move in self.chess_board.legal_moves:
                 if self.chess_board.is_castling(move):
