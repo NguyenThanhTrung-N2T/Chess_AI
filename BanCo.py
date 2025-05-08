@@ -5,14 +5,17 @@ import chess  # Thư viện chess để quản lý bàn cờ logic
 class Board:
     def __init__(self, screen, size=100):
         self.screen = screen
-        self.size = int(size)  # Đảm bảo size là số nguyên
-        self.cell_size = self.size  # Nếu muốn thay đổi, thay ở đây
+        self.size = int(size)
+        self.cell_size = self.size
         self.colors = [(240, 217, 181), (181, 136, 99)]  # Màu bàn cờ
-        self.selected_square = None  # (row, col)
+        self.selected_square = None
         self.images = self.load_images()
-        self.chess_board = chess.Board()  # Chỉ dùng chess.Board
-        self.king_in_check_square = None  # Vị trí vua bị chiếu
-        self.move_history = []  # Lịch sử nước đi
+        self.chess_board = chess.Board()
+        self.king_in_check_square = None
+        self.move_history = []
+        self.font = pygame.font.SysFont("Arial", 24)
+        self.status_message = ""
+        self.game_over = False
 
     def load_images(self):
         pieces = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king']
@@ -37,13 +40,16 @@ class Board:
                 rect = pygame.Rect(offset_x + col * self.cell_size, offset_y + row * self.cell_size, self.cell_size, self.cell_size)
                 pygame.draw.rect(self.screen, color, rect)
 
-                # Viền đỏ cho quân đang được chọn
                 if self.selected_square == (row, col):
                     pygame.draw.rect(self.screen, (255, 0, 0), rect, 5)
 
-                # Viền vàng nếu vua bị chiếu
                 if self.king_in_check_square == (row, col):
-                    pygame.draw.rect(self.screen, (255, 255, 0), rect, 5) # Viền vàng cho vua bị chiếu
+                    pygame.draw.rect(self.screen, (255, 255, 0), rect, 5)
+
+        # Vẽ thông báo trạng thái dưới bàn cờ
+        if self.status_message:
+            msg = self.font.render(self.status_message, True, (255, 0, 0))
+            self.screen.blit(msg, (10, 8 * self.cell_size + 10))
 
     def draw_pieces(self, offset_x=0, offset_y=0):
         for row in range(8):
@@ -66,61 +72,96 @@ class Board:
                         self.screen.blit(image, (offset_x + col * self.cell_size, offset_y + row * self.cell_size))
 
     def handle_click(self, row, col):
+        if self.game_over:
+            return
+
         square = chess.square(col, 7 - row)
 
         if self.selected_square is None:
             if self.is_valid_selection(row, col):
                 self.selected_square = (row, col)
-                print(f"Selected piece at ({row},{col})")
             else:
-                print(f"Không thể chọn ô ({row},{col})")
+                self.status_message = ">> Không thể chọn ô này."
         else:
             from_row, from_col = self.selected_square
             from_square = chess.square(from_col, 7 - from_row)
             to_square = square
             move = chess.Move(from_square, to_square)
 
+            # Phong cấp nếu là tốt đi đến cuối bàn
+            if self.chess_board.piece_at(from_square).piece_type == chess.PAWN:
+                if chess.square_rank(to_square) in [0, 7]:
+                    move = chess.Move(from_square, to_square, promotion=chess.QUEEN)
+
             if move in self.chess_board.legal_moves:
+                if self.chess_board.is_castling(move):
+                    self.status_message = ">> Nhập thành thành công!"
+
                 self.move_history.append(self.chess_board.san(move))
                 self.chess_board.push(move)
-                print(f"Moved from ({from_row},{from_col}) to ({row},{col})")
 
                 if self.chess_board.is_check():
                     king_sq = self.chess_board.king(self.chess_board.turn)
                     row_check = 7 - chess.square_rank(king_sq)
                     col_check = chess.square_file(king_sq)
                     self.king_in_check_square = (row_check, col_check)
+                    self.status_message = ">> Vua đang bị chiếu!"
                 else:
                     self.king_in_check_square = None
+                    if not self.chess_board.is_castling(move):
+                        self.status_message = ""
+
+                if self.check_game_end():
+                    self.game_over = True
             else:
-                print(f"Nước đi không hợp lệ từ ({from_row},{from_col}) đến ({row},{col})")
+                self.status_message = ">> Nước đi không hợp lệ."
 
             self.selected_square = None
+
 
     def is_valid_selection(self, row, col):
         square = chess.square(col, 7 - row)
         piece = self.chess_board.piece_at(square)
         return piece is not None and piece.color == self.chess_board.turn
 
+    def check_game_end(self):
+        if self.chess_board.is_checkmate():
+            winner = "Trắng" if not self.chess_board.turn else "Đen"
+            self.status_message = f">> Chiếu hết! {winner} thắng!"
+            return True
+        elif self.chess_board.is_stalemate():
+            self.status_message = ">> Hòa do bí!"
+            return True
+        elif self.chess_board.is_insufficient_material():
+            self.status_message = ">> Hòa do không đủ quân!"
+            return True
+        elif self.chess_board.can_claim_fifty_moves():
+            self.status_message = ">> Hòa do 50 nước không ăn quân và đi tốt!"
+            return True
+        elif self.chess_board.can_claim_threefold_repetition():
+            self.status_message = ">> Hòa do lặp lại 3 lần!"
+            return True
+        return False
+
     def reset_game(self):
         self.chess_board = chess.Board()
-        self.move_history = []  # Reset lịch sử
+        self.move_history = []
         self.selected_square = None
         self.king_in_check_square = None
+        self.status_message = ""
+        self.game_over = False
 
     def undo_move(self):
         if self.move_history:
-            last_move = self.move_history.pop()  # Lấy nước đi cuối cùng
-            print(f"Undoing move: {last_move}")
+            self.move_history.pop()
+            self.chess_board.pop()
 
-            # Quay lại bàn cờ trước nước đi này
-            self.chess_board.pop()  # Hoàn tác nước đi cuối cùng
-
-            # Cập nhật lại các thông tin về quân vua bị chiếu
             if self.chess_board.is_check():
                 king_sq = self.chess_board.king(self.chess_board.turn)
                 row_check = 7 - chess.square_rank(king_sq)
                 col_check = chess.square_file(king_sq)
                 self.king_in_check_square = (row_check, col_check)
+                self.status_message = ">> Vua đang bị chiếu!"
             else:
                 self.king_in_check_square = None
+                self.status_message = ""
