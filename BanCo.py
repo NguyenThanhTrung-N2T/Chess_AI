@@ -1,19 +1,18 @@
 import pygame
 import os
-from QuanCo import Piece
 import chess  # Thư viện chess để quản lý bàn cờ logic
 
 class Board:
     def __init__(self, screen, size=100):
         self.screen = screen
-        self.size = size
-        self.cell_size = size
+        self.size = int(size)  # Đảm bảo size là số nguyên
+        self.cell_size = self.size  # Nếu muốn thay đổi, thay ở đây
         self.colors = [(240, 217, 181), (181, 136, 99)]  # Màu bàn cờ
-        self.selected_piece = None  # (piece, from_row, from_col)
-        self.selected_square = None  # (row, col) của quân cờ đã chọn
+        self.selected_square = None  # (row, col)
         self.images = self.load_images()
-        self.board = self.create_initial_board()
-        self.chess_board = chess.Board() # Tạo một bàn cờ logic từ thư viện chess
+        self.chess_board = chess.Board()  # Chỉ dùng chess.Board
+        self.king_in_check_square = None  # Vị trí vua bị chiếu
+        self.move_history = []  # Lịch sử nước đi
 
     def load_images(self):
         pieces = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king']
@@ -35,102 +34,90 @@ class Board:
         for row in range(8):
             for col in range(8):
                 color = self.colors[(row + col) % 2]
-                rect = pygame.Rect(offset_x + col * self.size, offset_y + row * self.size, self.size, self.size)
+                rect = pygame.Rect(offset_x + col * self.cell_size, offset_y + row * self.cell_size, self.cell_size, self.cell_size)
                 pygame.draw.rect(self.screen, color, rect)
 
-                # Vẽ viền cho ô chứa quân cờ được chọn
+                # Viền đỏ cho quân đang được chọn
                 if self.selected_square == (row, col):
-                    pygame.draw.rect(self.screen, (255, 0, 0), rect, 5)  # Màu viền đỏ
+                    pygame.draw.rect(self.screen, (255, 0, 0), rect, 5)
+
+                # Viền vàng nếu vua bị chiếu
+                if self.king_in_check_square == (row, col):
+                    pygame.draw.rect(self.screen, (255, 255, 0), rect, 5) # Viền vàng cho vua bị chiếu
 
     def draw_pieces(self, offset_x=0, offset_y=0):
         for row in range(8):
             for col in range(8):
-                piece = self.board[row][col]
+                square = chess.square(col, 7 - row)
+                piece = self.chess_board.piece_at(square)
                 if piece:
-                    color = 'w' if piece.mau == 'white' else 'b'
-                    key = f"{color}_{piece.loai}"
+                    color = 'w' if piece.color == chess.WHITE else 'b'
+                    type_map = {
+                        chess.PAWN: 'pawn',
+                        chess.KNIGHT: 'knight',
+                        chess.BISHOP: 'bishop',
+                        chess.ROOK: 'rook',
+                        chess.QUEEN: 'queen',
+                        chess.KING: 'king'
+                    }
+                    key = f"{color}_{type_map[piece.piece_type]}"
                     image = self.images.get(key)
                     if image:
-                        self.screen.blit(image, (offset_x + col * self.size, offset_y + row * self.size))
-
-    def create_initial_board(self):
-        def create_piece(loai, mau):
-            return Piece(loai, mau)
-
-        board = [[None for _ in range(8)] for _ in range(8)]
-
-        # Đặt quân đen
-        board[0] = [
-            create_piece('rook', 'black'),
-            create_piece('knight', 'black'),
-            create_piece('bishop', 'black'),
-            create_piece('queen', 'black'),
-            create_piece('king', 'black'),
-            create_piece('bishop', 'black'),
-            create_piece('knight', 'black'),
-            create_piece('rook', 'black')
-        ]
-        board[1] = [create_piece('pawn', 'black') for _ in range(8)]
-
-        # Đặt quân trắng
-        board[6] = [create_piece('pawn', 'white') for _ in range(8)]
-        board[7] = [
-            create_piece('rook', 'white'),
-            create_piece('knight', 'white'),
-            create_piece('bishop', 'white'),
-            create_piece('queen', 'white'),
-            create_piece('king', 'white'),
-            create_piece('bishop', 'white'),
-            create_piece('knight', 'white'),
-            create_piece('rook', 'white')
-        ]
-        return board
+                        self.screen.blit(image, (offset_x + col * self.cell_size, offset_y + row * self.cell_size))
 
     def handle_click(self, row, col):
-        piece = self.get_piece_at(row, col)
+        square = chess.square(col, 7 - row)
 
-        if self.selected_piece is None:
-            if piece is not None:
-                self.selected_piece = (piece, row, col)
+        if self.selected_square is None:
+            piece = self.chess_board.piece_at(square)
+            if piece and piece.color == self.chess_board.turn:
                 self.selected_square = (row, col)
-                print(f"Selected piece at ({row}, {col}): {piece.loai} {piece.mau}")
+                print(f"Selected piece at ({row},{col})")
         else:
-            selected_piece, from_row, from_col = self.selected_piece
-
-            if self.selected_square == (row, col):
-                print(f"Unselected piece at ({row}, {col}): {selected_piece.loai} {selected_piece.mau}")
-                self.selected_piece = None
-                self.selected_square = None
-                return
-
-            if piece is not None and piece.mau == selected_piece.mau:
-                print(f"Selected new piece at ({row}, {col}): {piece.loai} {piece.mau}")
-                self.selected_piece = (piece, row, col)
-                self.selected_square = (row, col)
-                return
-
-            # Chuyển tọa độ từ row, col sang notation 'e2', 'e4' (dành cho python-chess)
-            import chess
+            from_row, from_col = self.selected_square
             from_square = chess.square(from_col, 7 - from_row)
-            to_square = chess.square(col, 7 - row)
+            to_square = square
             move = chess.Move(from_square, to_square)
 
             if move in self.chess_board.legal_moves:
-                self.chess_board.push(move)
+                # Lưu lại nước đi vào lịch sử
+                self.move_history.append(self.chess_board.san(move))  # Lưu dạng chữ cho nước đi
 
-                # Di chuyển quân cờ trong self.board
-                self.board[row][col] = selected_piece
-                self.board[from_row][from_col] = None
-                selected_piece.da_di = True
-                print(f"Moved {selected_piece.loai} from ({from_row},{from_col}) to ({row},{col})")
+                self.chess_board.push(move)
+                print(f"Moved from ({from_row},{from_col}) to ({row},{col})")
+
+                # Cập nhật vị trí vua bị chiếu nếu có
+                if self.chess_board.is_check():
+                    king_sq = self.chess_board.king(self.chess_board.turn)
+                    row_check = 7 - chess.square_rank(king_sq)
+                    col_check = chess.square_file(king_sq)
+                    self.king_in_check_square = (row_check, col_check)
+                else:
+                    self.king_in_check_square = None
             else:
                 print(f"Nước đi không hợp lệ từ ({from_row},{from_col}) đến ({row},{col})")
 
-            self.selected_piece = None
             self.selected_square = None
 
+    def reset_game(self):
+        self.chess_board = chess.Board()
+        self.move_history = []  # Reset lịch sử
+        self.selected_square = None
+        self.king_in_check_square = None
 
-    def get_piece_at(self, row, col):
-        if 0 <= row < 8 and 0 <= col < 8:
-            return self.board[row][col]
-        return None
+    def undo_move(self):
+        if self.move_history:
+            last_move = self.move_history.pop()  # Lấy nước đi cuối cùng
+            print(f"Undoing move: {last_move}")
+
+            # Quay lại bàn cờ trước nước đi này
+            self.chess_board.pop()  # Hoàn tác nước đi cuối cùng
+
+            # Cập nhật lại các thông tin về quân vua bị chiếu
+            if self.chess_board.is_check():
+                king_sq = self.chess_board.king(self.chess_board.turn)
+                row_check = 7 - chess.square_rank(king_sq)
+                col_check = chess.square_file(king_sq)
+                self.king_in_check_square = (row_check, col_check)
+            else:
+                self.king_in_check_square = None

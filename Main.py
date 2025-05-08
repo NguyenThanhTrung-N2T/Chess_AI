@@ -39,11 +39,9 @@ def draw_menu(screen):
         mouse_pos   = pygame.mouse.get_pos()
         mouse_click = pygame.mouse.get_pressed()[0]
 
-        # Vẽ tiêu đề
         title_text = title_font.render("Choose a game mode", True, (80, 84, 24))
         screen.blit(title_text, ((1000 - title_text.get_width()) // 2, 60))
 
-        # Vẽ các button với hiệu ứng hover/click
         for btn in buttons:
             rect       = btn["rect"]
             base_color = btn["color"]
@@ -58,7 +56,6 @@ def draw_menu(screen):
             pygame.draw.rect(screen, color, rect, border_radius=10)
             screen.blit(btn["icon"], (rect.x + 10, rect.y + 10))
             txt = button_font.render(btn["text"], True, (255, 255, 255))
-            # Căn chữ mặc định (cách 60px từ icon)
             screen.blit(txt, (rect.x + 60, rect.y + (rect.height - txt.get_height()) // 2))
 
         pygame.display.flip()
@@ -81,16 +78,24 @@ def main():
     pygame.display.set_caption("Chess AI - Pygame")
     clock = pygame.time.Clock()
 
-    # Chạy menu và lấy chế độ
     mode = draw_menu(screen)
     if mode is None:
         return
     print("Selected mode:", mode)
 
-    # Khởi tạo bàn cờ
-    board = Board(screen)
+    board = Board(screen, 100)
 
-    # Vòng lặp chính
+    button_font = pygame.font.SysFont("Arial", 28, bold=True)
+    button_color = (100, 150, 250)
+
+    icon_new = pygame.transform.scale(pygame.image.load("assets/new_game.png"), (40,40))
+    icon_undo = pygame.transform.scale(pygame.image.load("assets/undo.png"), (40,40))
+    icon_reset = pygame.transform.scale(pygame.image.load("assets/reset.png"), (40,40))
+
+    btn_new = pygame.Rect(810,100,180,50)
+    btn_undo = pygame.Rect(810,180,180,50)
+    btn_reset = pygame.Rect(810,260,180,50)
+
     running = True
     while running:
         for event in pygame.event.get():
@@ -98,42 +103,33 @@ def main():
                 running = False
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 mouse_x, mouse_y = pygame.mouse.get_pos()
-                if mouse_x < 800:  # Chỉ xử lý vùng bàn cờ
+                if mouse_x < 800:
                     row = mouse_y // board.cell_size
                     col = mouse_x // board.cell_size
                     board.handle_click(row, col)
+                elif btn_new.collidepoint(mouse_x, mouse_y):
+                    board.start_new_game(mode)  
+                elif btn_undo.collidepoint(mouse_x, mouse_y):
+                    board.undo_move()
+                elif btn_reset.collidepoint(mouse_x, mouse_y):
+                    board.reset_game()
 
         screen.fill((239, 249, 253))
-
-        # Vẽ bàn cờ và quân cờ
         board.draw_board(offset_x=0, offset_y=0)
         board.draw_pieces(offset_x=0, offset_y=0)
 
-        # Vẽ panel bên phải (New, Undo, Reset)
-        button_font = pygame.font.SysFont("Arial", 28, bold=True)
-        button_color = (100, 150, 250)
-
-        # New Game
-        icon_new = pygame.transform.scale(pygame.image.load("assets/new_game.png"), (40,40))
-        btn_new = pygame.Rect(810,100,180,50)
+        # Vẽ các nút chức năng
         pygame.draw.rect(screen, button_color, btn_new, border_radius=10)
         screen.blit(icon_new, (btn_new.x+10, btn_new.y+5))
         txt_new = button_font.render("New Game", True, (255,255,255))
         screen.blit(txt_new, (btn_new.x + 60, btn_new.y + (50 - txt_new.get_height())//2))
 
-        # Undo
-        icon_undo = pygame.transform.scale(pygame.image.load("assets/undo.png"), (40,40))
-        btn_undo = pygame.Rect(810,180,180,50)
         pygame.draw.rect(screen, button_color, btn_undo, border_radius=10)
         screen.blit(icon_undo, (btn_undo.x+10, btn_undo.y+5))
         txt_undo = button_font.render("Undo", True, (255,255,255))
-        # Căn giữa chữ với icon bù dịch +15px
         rect_undo = txt_undo.get_rect(center=(btn_undo.centerx+15, btn_undo.centery))
         screen.blit(txt_undo, rect_undo)
 
-        # Reset
-        icon_reset = pygame.transform.scale(pygame.image.load("assets/reset.png"), (40,40))
-        btn_reset = pygame.Rect(810,260,180,50)
         pygame.draw.rect(screen, button_color, btn_reset, border_radius=10)
         screen.blit(icon_reset, (btn_reset.x+10, btn_reset.y+5))
         txt_reset = button_font.render("Reset", True, (255,255,255))
