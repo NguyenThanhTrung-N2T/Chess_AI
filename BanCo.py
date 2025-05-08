@@ -126,20 +126,20 @@ class Board:
 
     def check_game_end(self):
         if self.chess_board.is_checkmate():
-            winner = "Trắng" if not self.chess_board.turn else "Đen"
-            self.status_message = f">> Chiếu hết! {winner} thắng!"
+            winner = "White" if not self.chess_board.turn else "Black"
+            self.status_message = f">> {winner} win !"
             return True
         elif self.chess_board.is_stalemate():
-            self.status_message = ">> Hòa do bí!"
+            self.status_message = ">> Draw by stalemate !"
             return True
         elif self.chess_board.is_insufficient_material():
-            self.status_message = ">> Hòa do không đủ quân!"
+            self.status_message = ">> Draw by enough pieces !"
             return True
         elif self.chess_board.can_claim_fifty_moves():
-            self.status_message = ">> Hòa do 50 nước không ăn quân và đi tốt!"
+            self.status_message = ">> Draw by 50 moves !"
             return True
         elif self.chess_board.can_claim_threefold_repetition():
-            self.status_message = ">> Hòa do lặp lại 3 lần!"
+            self.status_message = ">> Draw by threefold repetiton !"
             return True
         return False
 
