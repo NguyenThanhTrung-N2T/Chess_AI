@@ -1,115 +1,133 @@
-import chess
 import random
+import chess
 
-PIECE_VALUES = {
-    chess.PAWN: 100,
-    chess.KNIGHT: 320,
-    chess.BISHOP: 330,
-    chess.ROOK: 500,
-    chess.QUEEN: 900,
-    chess.KING: 20000
-}
-
-CENTER_SQUARES = [chess.D4, chess.D5, chess.E4, chess.E5]
-
-class AI:
-    def __init__(self, level=2):  # 0 = dễ, 1 = trung bình, 2 = khó
-        self.level = level
-
-    def select_move(self, board):
-        if self.level == 0:
-            return self.random_move(board)
-        elif self.level == 1:
-            return self.minimax_root(board, depth=2, alpha_beta=True)
-        else:
-            return self.minimax_root(board, depth=4, alpha_beta=True)
-
-    def random_move(self, board):
-        legal_moves = list(board.legal_moves)
-        safe_moves = [move for move in legal_moves if not self.would_be_in_check(board, move)]
-        return random.choice(safe_moves or legal_moves)
-
-    def would_be_in_check(self, board, move):
-        board.push(move)
-        is_in_check = board.is_check()
-        board.pop()
-        return is_in_check
-
-    def minimax_root(self, board, depth, alpha_beta):
-        best_move = None
-        best_score = float('-inf') if board.turn == chess.WHITE else float('inf')
-
-        for move in board.legal_moves:
-            board.push(move)
-            score = self.minimax(board, depth - 1, float('-inf'), float('inf'), not board.turn, alpha_beta)
-            board.pop()
-
-            if board.turn == chess.WHITE and score > best_score:
-                best_score = score
-                best_move = move
-            elif board.turn == chess.BLACK and score < best_score:
-                best_score = score
-                best_move = move
-
-        return best_move
-
-    def minimax(self, board, depth, alpha, beta, is_maximizing, alpha_beta):
-        if board.is_checkmate():
-            return -99999 if is_maximizing else 99999
-        if board.is_stalemate() or board.is_insufficient_material():
-            return 0
-        if depth == 0:
-            return self.evaluate_board(board)
-
-        if is_maximizing:
-            max_eval = float('-inf')
-            for move in board.legal_moves:
-                board.push(move)
-                eval = self.minimax(board, depth - 1, alpha, beta, False, alpha_beta)
-                board.pop()
-                max_eval = max(max_eval, eval)
-                if alpha_beta:
-                    alpha = max(alpha, eval)
-                    if beta <= alpha:
-                        break
-            return max_eval
-        else:
-            min_eval = float('inf')
-            for move in board.legal_moves:
-                board.push(move)
-                eval = self.minimax(board, depth - 1, alpha, beta, True, alpha_beta)
-                board.pop()
-                min_eval = min(min_eval, eval)
-                if alpha_beta:
-                    beta = min(beta, eval)
-                    if beta <= alpha:
-                        break
-            return min_eval
+class ChessAI:
+    def __init__(self, level=1):
+        self.level = level  # 1: dễ, 2: trung bình, 3: khó
 
     def evaluate_board(self, board):
-        score = 0
+        piece_values = {
+            chess.PAWN: 100,
+            chess.KNIGHT: 320,
+            chess.BISHOP: 330,
+            chess.ROOK: 500,
+            chess.QUEEN: 900,
+            chess.KING: 20000
+        }
 
+        value = 0
         for square in chess.SQUARES:
             piece = board.piece_at(square)
             if piece:
-                value = PIECE_VALUES.get(piece.piece_type, 0)
-                if piece.color == chess.WHITE:
-                    score += value
-                else:
-                    score -= value
+                val = piece_values[piece.piece_type]
+                value += val if piece.color == chess.WHITE else -val
 
-                # Ưu tiên kiểm soát trung tâm
-                if square in CENTER_SQUARES:
-                    if piece.color == chess.WHITE:
-                        score += 20
-                    else:
-                        score -= 20
-
-        # Trừ điểm nếu vua bị chiếu
+        # Thưởng/phạt nếu đang bị chiếu
         if board.is_check():
-            if board.turn == chess.WHITE:
-                score -= 50
-            else:
-                score += 50
+            value += -50 if board.turn == chess.WHITE else 50
 
-        return score
+        return value
+
+    def evaluate_move_safety(self, board, move):
+        board.push(move)
+        target_square = move.to_square
+        attackers = board.attackers(not board.turn, target_square)
+        board.pop()
+        return len(attackers) == 0  # True nếu không bị tấn công sau khi đi
+
+    def minimax(self, board, depth, alpha, beta, maximizing):
+        if depth == 0 or board.is_game_over():
+            return self.evaluate_board(board)
+
+        best_eval = float('-inf') if maximizing else float('inf')
+
+        for move in board.legal_moves:
+            board.push(move)
+            eval = self.minimax(board, depth - 1, alpha, beta, not maximizing)
+            board.pop()
+
+            if maximizing:
+                best_eval = max(best_eval, eval)
+                alpha = max(alpha, eval)
+                if beta <= alpha:
+                    break
+            else:
+                best_eval = min(best_eval, eval)
+                beta = min(beta, eval)
+                if beta <= alpha:
+                    break
+
+        return best_eval
+
+    def select_move(self, board):
+        legal_moves = list(board.legal_moves)
+        if not legal_moves:
+            return None
+
+        # EASY MODE
+        if self.level == 1:
+            checks = [m for m in legal_moves if board.gives_check(m)]
+            safe_moves = []
+            for move in legal_moves:
+                board.push(move)
+                if not board.is_check():
+                    safe_moves.append(move)
+                board.pop()
+            return random.choice(checks or safe_moves or legal_moves)
+
+        # NORMAL MODE
+        elif self.level == 2:
+            move_scores = []
+
+            for move in legal_moves:
+                gives_check = board.gives_check(move)
+                is_capture = board.is_capture(move)
+                is_safe = self.evaluate_move_safety(board, move)
+
+                board.push(move)
+                score = self.evaluate_board(board)
+
+                if board.is_checkmate():
+                    score += 10000
+                elif board.is_check():
+                    score += 80
+                elif is_capture:
+                    score += 60
+                elif gives_check:
+                    score += 40
+
+                if not is_safe:
+                    score -= 100  # phạt nếu nước đi dẫn đến quân bị bắt
+                else:
+                    score += 30   # thưởng nếu nước đi an toàn
+
+                if board.is_repetition(2):
+                    score -= 100
+
+                board.pop()
+                move_scores.append((move, score))
+
+            move_scores.sort(key=lambda x: x[1], reverse=board.turn == chess.WHITE)
+            top_moves = move_scores[:min(5, len(move_scores))]
+            chosen = random.choice([m[0] for m in top_moves])
+            return chosen
+
+        # HARD MODE
+        elif self.level == 3:
+            move_evals = []
+
+            for move in legal_moves:
+                is_safe = self.evaluate_move_safety(board, move)
+                board.push(move)
+                eval = self.minimax(board, 3, float('-inf'), float('inf'), board.turn)
+                board.pop()
+                if not is_safe:
+                    eval -= 150  # Phạt nặng nếu di chuyển vào ô bị tấn công
+                else:
+                    eval += 50   # Thưởng nếu đi vào ô an toàn
+                move_evals.append((move, eval))
+
+            move_evals.sort(key=lambda x: x[1], reverse=board.turn == chess.WHITE)
+            top_moves = move_evals[:min(3, len(move_evals))]
+            chosen = random.choice([m[0] for m in top_moves])
+            return chosen

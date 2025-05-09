@@ -1,6 +1,7 @@
 import pygame
 import os
-import chess  # Thư viện chess để quản lý bàn cờ logic
+import chess  # Thư viện chess để quản lý bàn cờ 
+from AI import ChessAI  # Thư viện AI để xử lý nước đi của máy
 
 class Board:
     def __init__(self, screen, size=100):
@@ -16,6 +17,10 @@ class Board:
         self.font = pygame.font.SysFont("Arial", 24)
         self.status_message = ""
         self.game_over = False
+        self.play_with_ai = False
+        self.ai_player = chess.BLACK  # Máy chơi là bên nào
+        self.ai_level = 2  # dễ = 1, trung bình = 2, khó = 3
+        self.ai = ChessAI(level=self.ai_level)
 
     def load_images(self):
         pieces = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king']
@@ -46,7 +51,6 @@ class Board:
                 if self.king_in_check_square == (row, col):
                     pygame.draw.rect(self.screen, (255, 255, 0), rect, 5)
 
-        # Vẽ thông báo trạng thái dưới bàn cờ
         if self.status_message:
             msg = self.font.render(self.status_message, True, (255, 0, 0))
             self.screen.blit(msg, (10, 8 * self.cell_size + 10))
@@ -71,78 +75,6 @@ class Board:
                     if image:
                         self.screen.blit(image, (offset_x + col * self.cell_size, offset_y + row * self.cell_size))
 
-    def show_promotion_menu(self):
-        overlay = pygame.Surface((400, 400))
-        overlay.set_alpha(230)
-        overlay.fill((241, 218, 91))
-
-        button_font = pygame.font.SysFont("Arial", 28, bold=True)
-        button_color = (247, 81, 90)
-        text_color = (255, 255, 255)
-
-        btn_queen = pygame.Rect(50, 50, 300, 50)
-        btn_rook = pygame.Rect(50, 130, 300, 50)
-        btn_bishop = pygame.Rect(50, 210, 300, 50)
-        btn_knight = pygame.Rect(50, 290, 300, 50)
-
-        # Load và resize icon
-        queen_icon = pygame.image.load("images/queen.png")
-        rook_icon = pygame.image.load("images/rook.png")
-        bishop_icon = pygame.image.load("images/bishop.png")
-        knight_icon = pygame.image.load("images/knight.png")
-
-        icon_size = (32, 32)
-        queen_icon = pygame.transform.scale(queen_icon, icon_size)
-        rook_icon = pygame.transform.scale(rook_icon, icon_size)
-        bishop_icon = pygame.transform.scale(bishop_icon, icon_size)
-        knight_icon = pygame.transform.scale(knight_icon, icon_size)
-
-        while True:
-            self.screen.blit(overlay, (0, 0))
-
-            pygame.draw.rect(self.screen, button_color, btn_queen)
-            pygame.draw.rect(self.screen, button_color, btn_rook)
-            pygame.draw.rect(self.screen, button_color, btn_bishop)
-            pygame.draw.rect(self.screen, button_color, btn_knight)
-
-            def draw_button(rect, icon, text):
-                text_surface = button_font.render(text, True, text_color)
-                spacing = 10
-                total_width = icon.get_width() + spacing + text_surface.get_width()
-
-                # Tính điểm bắt đầu để căn giữa cụm icon + text trong button
-                start_x = rect.x + (rect.width - total_width) // 2
-                icon_y = rect.y + (rect.height - icon.get_height()) // 2
-                text_y = rect.y + (rect.height - text_surface.get_height()) // 2
-
-                self.screen.blit(icon, (start_x, icon_y))
-                self.screen.blit(text_surface, (start_x + icon.get_width() + spacing, text_y))
-
-            draw_button(btn_queen, queen_icon, "Queen")
-            draw_button(btn_rook, rook_icon, "Rook")
-            draw_button(btn_bishop, bishop_icon, "Bishop")
-            draw_button(btn_knight, knight_icon, "Knight")
-
-            pygame.display.flip()
-
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    exit()
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    if btn_queen.collidepoint(event.pos):
-                        return chess.QUEEN
-                    elif btn_rook.collidepoint(event.pos):
-                        return chess.ROOK
-                    elif btn_bishop.collidepoint(event.pos):
-                        return chess.BISHOP
-                    elif btn_knight.collidepoint(event.pos):
-                        return chess.KNIGHT
-
-
-
-
-
     def handle_click(self, row, col):
         if self.game_over:
             return
@@ -161,20 +93,19 @@ class Board:
             move = chess.Move(from_square, to_square)
 
             piece = self.chess_board.piece_at(from_square)
+            to_rank = chess.square_rank(to_square)
 
-            if piece.piece_type == chess.PAWN and chess.square_rank(to_square) in [0, 7]:
-                # Hiển thị overlay menu chọn quân phong cấp ngay trên cửa sổ hiện tại
+            # Tạm thời dùng hậu làm quân phong mặc định để kiểm tra hợp lệ
+            temp_move = chess.Move(from_square, to_square, promotion=chess.QUEEN)
+
+            if piece.piece_type == chess.PAWN and to_rank in [0, 7] and temp_move in self.chess_board.legal_moves:
+                # Nếu đi được và là phong cấp → cho người chơi chọn quân
                 promotion_piece = self.show_promotion_menu()
-
-                # Không cần gọi lại set_mode!
                 move = chess.Move(from_square, to_square, promotion=promotion_piece)
             else:
                 move = chess.Move(from_square, to_square)
 
             if move in self.chess_board.legal_moves:
-                if self.chess_board.is_castling(move):
-                    self.status_message = ">> Nhập thành thành công!"
-
                 self.move_history.append(self.chess_board.san(move))
                 self.chess_board.push(move)
 
@@ -186,11 +117,36 @@ class Board:
                     self.status_message = ">> Vua đang bị chiếu!"
                 else:
                     self.king_in_check_square = None
-                    if not self.chess_board.is_castling(move):
-                        self.status_message = ""
+                    self.status_message = ""
 
                 if self.check_game_end():
                     self.game_over = True
+                    return
+
+                # Gọi AI nếu có
+                if self.play_with_ai and self.chess_board.turn == self.ai_player:
+                    ai_move = self.ai.select_move(self.chess_board)
+
+                    if ai_move and ai_move in self.chess_board.legal_moves:
+                        move_san = self.chess_board.san(ai_move)  # Gọi san() trước khi push()
+                        self.chess_board.push(ai_move)
+                        self.move_history.append(move_san)
+
+                        if self.chess_board.is_check():
+                            king_sq = self.chess_board.king(self.chess_board.turn)
+                            row_check = 7 - chess.square_rank(king_sq)
+                            col_check = chess.square_file(king_sq)
+                            self.king_in_check_square = (row_check, col_check)
+                            self.status_message = ">> Vua đang bị chiếu!"
+                        else:
+                            self.king_in_check_square = None
+                            self.status_message = ""
+
+                        if self.check_game_end():
+                            self.game_over = True
+                    else:
+                        print(f"[LỖI] AI trả về nước đi không hợp lệ: {ai_move} - {self.chess_board.fen()}")
+
             else:
                 self.status_message = ">> Nước đi không hợp lệ."
 
@@ -242,3 +198,78 @@ class Board:
             else:
                 self.king_in_check_square = None
                 self.status_message = ""
+
+    def show_promotion_menu(self):
+        overlay = pygame.Surface((400, 400))
+        overlay.set_alpha(230)
+        overlay.fill((241, 218, 91))
+
+        button_font = pygame.font.SysFont("Arial", 28, bold=True)
+        button_color = (247, 81, 90)
+        text_color = (255, 255, 255)
+
+        # Tính toán toạ độ dọc để căn giữa danh sách 4 nút
+        btn_width = 300
+        btn_height = 50
+        gap = 20  # khoảng cách giữa các nút
+        total_height = 4 * btn_height + 3 * gap
+        start_y = (400 - total_height) // 2
+
+        # Căn giữa theo chiều ngang
+        start_x = (400 - btn_width) // 2
+
+        btn_queen  = pygame.Rect(start_x, start_y + 0 * (btn_height + gap), btn_width, btn_height)
+        btn_bishop = pygame.Rect(start_x, start_y + 1 * (btn_height + gap), btn_width, btn_height)
+        btn_knight = pygame.Rect(start_x, start_y + 2 * (btn_height + gap), btn_width, btn_height)
+        btn_rook   = pygame.Rect(start_x, start_y + 3 * (btn_height + gap), btn_width, btn_height)
+
+        # Load và resize icon
+        queen_icon = pygame.image.load("images/queen.png")
+        rook_icon = pygame.image.load("images/rook.png")
+        bishop_icon = pygame.image.load("images/bishop.png")
+        knight_icon = pygame.image.load("images/knight.png")
+
+        icon_size = (32, 32)
+        queen_icon = pygame.transform.scale(queen_icon, icon_size)
+        rook_icon = pygame.transform.scale(rook_icon, icon_size)
+        bishop_icon = pygame.transform.scale(bishop_icon, icon_size)
+        knight_icon = pygame.transform.scale(knight_icon, icon_size)
+        while True:
+            self.screen.blit(overlay, (0, 0))
+            pygame.draw.rect(self.screen, button_color, btn_queen)
+            pygame.draw.rect(self.screen, button_color, btn_rook)
+            pygame.draw.rect(self.screen, button_color, btn_bishop)
+            pygame.draw.rect(self.screen, button_color, btn_knight)
+            def draw_button(rect, icon, text):
+                text_surface = button_font.render(text, True, text_color)
+                spacing = 10
+                total_width = icon.get_width() + spacing + text_surface.get_width()
+
+                # Tính điểm bắt đầu để căn giữa cụm icon + text trong button
+                start_x = rect.x + (rect.width - total_width) // 2
+                icon_y = rect.y + (rect.height - icon.get_height()) // 2
+                text_y = rect.y + (rect.height - text_surface.get_height()) // 2
+
+                self.screen.blit(icon, (start_x, icon_y))
+                self.screen.blit(text_surface, (start_x + icon.get_width() + spacing, text_y))
+
+            draw_button(btn_queen, queen_icon, "Queen")
+            draw_button(btn_rook, rook_icon, "Rook")
+            draw_button(btn_bishop, bishop_icon, "Bishop")
+            draw_button(btn_knight, knight_icon, "Knight")
+
+            pygame.display.flip()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    return None
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    mouse_pos = event.pos
+                    if btn_queen.collidepoint(mouse_pos):
+                        return chess.QUEEN
+                    elif btn_rook.collidepoint(mouse_pos):
+                        return chess.ROOK
+                    elif btn_bishop.collidepoint(mouse_pos):
+                        return chess.BISHOP
+                    elif btn_knight.collidepoint(mouse_pos):
+                        return chess.KNIGHT

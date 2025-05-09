@@ -1,7 +1,7 @@
 import pygame
 import os
 from BanCo import Board  # Import lớp Board của bạn
-import chess
+from AI import ChessAI  # Import lớp AI của bạn
 
 
 def is_hovered(rect, mouse_pos):
@@ -84,14 +84,26 @@ def main():
     clock = pygame.time.Clock()
 
     mode = draw_menu(screen)
+
     if mode is None:
         return
+
     print("Selected mode:", mode)
 
-    board = Board(screen, 100)
+    board = Board(screen, 100)  # Tạo bàn cờ mới
 
-    # Khởi tạo màn hình và lớp Board
-    board = Board(screen, 100)
+    if mode == "easy":
+        board.ai_level = 1
+        board.play_with_ai = True
+        board.ai = ChessAI(level=1)
+    elif mode == "normal":
+        board.ai_level = 2
+        board.play_with_ai = True
+        board.ai = ChessAI(level=2)
+    elif mode == "hard":
+        board.ai_level = 3
+        board.play_with_ai = True
+        board.ai = ChessAI(level=3)
 
     # Thiết lập phông chữ và màu sắc cho nút
     button_font = pygame.font.SysFont("Arial", 28, bold=True)
@@ -122,8 +134,22 @@ def main():
 
                 # Xử lý sự kiện nhấn nút
                 elif btn_new.collidepoint(mouse_x, mouse_y):
-                    self = draw_menu(screen)  # Hiển thị menu chọn chế độ chơi
-                    board = Board(screen, 100)  # Tạo lại bàn cờ mới
+                    mode = draw_menu(screen)
+                    # Reset lại bàn cờ với chế độ mới
+                    board = Board(screen, 100)
+                    if mode == "easy":
+                        board.ai_level = 1
+                        board.play_with_ai = True
+                        board.ai = ChessAI(level=1)
+                    elif mode == "normal":
+                        board.ai_level = 2
+                        board.play_with_ai = True
+                        board.ai = ChessAI(level=2)
+                    elif mode == "hard":
+                        board.ai_level = 3
+                        board.play_with_ai = True
+                        board.ai = ChessAI(level=3)
+
                 elif btn_undo.collidepoint(mouse_x, mouse_y):
                     board.undo_move()  # Hoàn tác nước đi
 
