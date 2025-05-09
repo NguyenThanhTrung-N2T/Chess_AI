@@ -122,8 +122,8 @@ def main():
 
                 # Xử lý sự kiện nhấn nút
                 elif btn_new.collidepoint(mouse_x, mouse_y):
-                    board.reset_game()  # Đặt lại trò chơi mới
-
+                    self = draw_menu(screen)  # Hiển thị menu chọn chế độ chơi
+                    board = Board(screen, 100)  # Tạo lại bàn cờ mới
                 elif btn_undo.collidepoint(mouse_x, mouse_y):
                     board.undo_move()  # Hoàn tác nước đi
 
