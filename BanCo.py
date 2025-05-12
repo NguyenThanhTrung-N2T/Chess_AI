@@ -14,7 +14,7 @@ class Board:
         self.chess_board = chess.Board()
         self.king_in_check_square = None
         self.move_history = []
-        self.font = pygame.font.SysFont("Arial", 24)
+        self.font = pygame.font.Font("fonts/pixelmix.ttf", 16)
         self.status_message = ""
         self.game_over = False
         self.play_with_ai = False
@@ -85,7 +85,7 @@ class Board:
             if self.is_valid_selection(row, col):
                 self.selected_square = (row, col)
             else:
-                self.status_message = ">> Không thể chọn ô này."
+                self.status_message = ">> Can't select this cell"
         else:
             from_row, from_col = self.selected_square
             from_square = chess.square(from_col, 7 - from_row)
@@ -114,7 +114,7 @@ class Board:
                     row_check = 7 - chess.square_rank(king_sq)
                     col_check = chess.square_file(king_sq)
                     self.king_in_check_square = (row_check, col_check)
-                    self.status_message = ">> Vua đang bị chiếu!"
+                    self.status_message = ">> King is being checkmated!"
                 else:
                     self.king_in_check_square = None
                     self.status_message = ""
@@ -204,7 +204,7 @@ class Board:
         overlay.set_alpha(230)
         overlay.fill((241, 218, 91))
 
-        button_font = pygame.font.SysFont("Arial", 28, bold=True)
+        button_font = pygame.font.Font("fonts/pixelmix.ttf", 16)
         button_color = (247, 81, 90)
         text_color = (255, 255, 255)
 

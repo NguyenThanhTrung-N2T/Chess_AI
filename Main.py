@@ -3,6 +3,11 @@ import os
 from BanCo import Board  # Import lớp Board của bạn
 from AI import ChessAI  # Import lớp AI của bạn
 
+screen_w = 900
+screen_h = 640
+button_text_size = 16
+title_text_size = 30
+icon_size = (40, 40)
 
 def is_hovered(rect, mouse_pos):
     return rect.collidepoint(mouse_pos)
@@ -10,21 +15,20 @@ def is_hovered(rect, mouse_pos):
 def draw_menu(screen):
     try:
         background_image = pygame.image.load("assets/te.jpg")
-        background_image = pygame.transform.scale(background_image, (900,640))
+        background_image = pygame.transform.scale(background_image, (screen_w,screen_h))
     except pygame.error as e:
         print(f"Error loading image: {e}")
         return None
 
     clock = pygame.time.Clock()
-    button_font = pygame.font.SysFont("Arial", 28, bold=True)
-    title_font = pygame.font.SysFont("Arial", 50, bold=True)
-    icon_size = (40, 40)
+    button_font = pygame.font.Font("fonts/pixelmix_bold.ttf", button_text_size)
+    title_font = pygame.font.Font("fonts/pixelmix_bold.ttf", title_text_size)
 
     # Load icon
-    icon_pvp   = pygame.transform.scale(pygame.image.load("assets/nguoi_vs_nguoi.png"), icon_size)
-    icon_ai_de = pygame.transform.scale(pygame.image.load("assets/ai_de.png"),       icon_size)
-    icon_ai_tb = pygame.transform.scale(pygame.image.load("assets/ai_tb.png"),       icon_size)
-    icon_ai_kho= pygame.transform.scale(pygame.image.load("assets/ai_kho.png"),      icon_size)
+    icon_pvp = pygame.transform.scale(pygame.image.load("assets/nguoi_vs_nguoi.png"), icon_size)
+    icon_ai_de = pygame.transform.scale(pygame.image.load("assets/ai_de.png"), icon_size)
+    icon_ai_tb = pygame.transform.scale(pygame.image.load("assets/ai_tb.png"), icon_size)
+    icon_ai_kho = pygame.transform.scale(pygame.image.load("assets/ai_kho.png"), icon_size)
 
     # Định nghĩa các button
     buttons = [
@@ -42,8 +46,8 @@ def draw_menu(screen):
         mouse_pos   = pygame.mouse.get_pos()
         mouse_click = pygame.mouse.get_pressed()[0]
 
-        title_text = title_font.render("Choose a game mode", True, (80, 84, 24))
-        screen.blit(title_text, ((900 - title_text.get_width()) // 2, 60))
+        title_text = title_font.render("CHOOSE A GAME MODE", True, (80, 84, 24))
+        screen.blit(title_text, ((screen_w - title_text.get_width()) // 2, 60))
 
         for btn in buttons:
             rect       = btn["rect"]
@@ -79,7 +83,7 @@ def draw_menu(screen):
 
 def main():
     pygame.init()
-    screen = pygame.display.set_mode((900, 640))
+    screen = pygame.display.set_mode((screen_w,screen_h))
     pygame.display.set_caption("Chess Game")
     clock = pygame.time.Clock()
 
@@ -106,7 +110,7 @@ def main():
         board.ai = ChessAI(level=3)
 
     # Thiết lập phông chữ và màu sắc cho nút
-    button_font = pygame.font.SysFont("Arial", 28, bold=True)
+    button_font = pygame.font.Font("fonts/pixelmix_bold.ttf", button_text_size)
     button_color = (100, 150, 250)
 
     # Thiết lập các nút điều khiển
@@ -157,8 +161,8 @@ def main():
                     board.reset_game()  # Đặt lại trò chơi
 
         # Vẽ bàn cờ và các quân cờ
-        screen.fill((239, 249, 253))
-        board.draw_board(offset_x=0, offset_y=0)
+        screen.fill((239, 249, 253)) #background
+        board.draw_board(offset_x=0, offset_y=0) 
         board.draw_pieces(offset_x=0, offset_y=0)
 
         # Vẽ các nút chức năng
