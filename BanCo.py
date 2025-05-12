@@ -4,7 +4,7 @@ import chess  # Thư viện chess để quản lý bàn cờ
 from AI import ChessAI  # Thư viện AI để xử lý nước đi của máy
 
 class Board:
-    def __init__(self, screen, size=100):
+    def __init__(self, screen, size=80):
         self.screen = screen
         self.size = int(size)
         self.cell_size = self.size

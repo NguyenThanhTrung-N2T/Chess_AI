@@ -10,7 +10,7 @@ def is_hovered(rect, mouse_pos):
 def draw_menu(screen):
     try:
         background_image = pygame.image.load("assets/te.jpg")
-        background_image = pygame.transform.scale(background_image, (1000, 800))
+        background_image = pygame.transform.scale(background_image, (900,640))
     except pygame.error as e:
         print(f"Error loading image: {e}")
         return None
@@ -28,10 +28,10 @@ def draw_menu(screen):
 
     # Định nghĩa các button
     buttons = [
-        {"rect": pygame.Rect(342, 150, 320, 60), "text": "Player vs Player", "icon": icon_pvp,   "color": (100, 200, 100), "mode": "pvp"},
-        {"rect": pygame.Rect(342, 250, 320, 60), "text": "Player vs AI (Easy)", "icon": icon_ai_de, "color": (100, 150, 250), "mode": "easy"},
-        {"rect": pygame.Rect(342, 350, 320, 60), "text": "Player vs AI (Normal)", "icon": icon_ai_tb, "color": (250, 100, 100), "mode": "normal"},
-        {"rect": pygame.Rect(342, 450, 320, 60), "text": "Player vs AI (Hard)", "icon": icon_ai_kho, "color": (250, 150, 100), "mode": "hard"},
+        {"rect": pygame.Rect(290, 150, 320, 60), "text": "Player vs Player", "icon": icon_pvp,   "color": (100, 200, 100), "mode": "pvp"},
+        {"rect": pygame.Rect(290, 250, 320, 60), "text": "Player vs AI (Easy)", "icon": icon_ai_de, "color": (100, 150, 250), "mode": "easy"},
+        {"rect": pygame.Rect(290, 350, 320, 60), "text": "Player vs AI (Normal)", "icon": icon_ai_tb, "color": (250, 100, 100), "mode": "normal"},
+        {"rect": pygame.Rect(290, 450, 320, 60), "text": "Player vs AI (Hard)", "icon": icon_ai_kho, "color": (250, 150, 100), "mode": "hard"},
     ]
 
     selected_mode = None
@@ -43,7 +43,7 @@ def draw_menu(screen):
         mouse_click = pygame.mouse.get_pressed()[0]
 
         title_text = title_font.render("Choose a game mode", True, (80, 84, 24))
-        screen.blit(title_text, ((1000 - title_text.get_width()) // 2, 60))
+        screen.blit(title_text, ((900 - title_text.get_width()) // 2, 60))
 
         for btn in buttons:
             rect       = btn["rect"]
@@ -79,7 +79,7 @@ def draw_menu(screen):
 
 def main():
     pygame.init()
-    screen = pygame.display.set_mode((1000, 800))
+    screen = pygame.display.set_mode((900, 640))
     pygame.display.set_caption("Chess Game")
     clock = pygame.time.Clock()
 
@@ -90,7 +90,7 @@ def main():
 
     print("Selected mode:", mode)
 
-    board = Board(screen, 100)  # Tạo bàn cờ mới
+    board = Board(screen, 80)  # Tạo bàn cờ mới
 
     if mode == "easy":
         board.ai_level = 1
@@ -114,9 +114,9 @@ def main():
     icon_undo = pygame.transform.scale(pygame.image.load("assets/undo.png"), (40, 40))
     icon_reset = pygame.transform.scale(pygame.image.load("assets/reset.png"), (40, 40))
 
-    btn_new = pygame.Rect(810, 100, 180, 50)
-    btn_undo = pygame.Rect(810, 180, 180, 50)
-    btn_reset = pygame.Rect(810, 260, 180, 50)
+    btn_new = pygame.Rect(680, 100, 180, 50)
+    btn_undo = pygame.Rect(680, 180, 180, 50)
+    btn_reset = pygame.Rect(680, 260, 180, 50)
 
     running = True
     while running:
@@ -127,7 +127,7 @@ def main():
                 mouse_x, mouse_y = pygame.mouse.get_pos()
 
                 # Xử lý sự kiện nhấn vào ô cờ
-                if mouse_x < 800:
+                if mouse_x < 640:
                     row = mouse_y // board.cell_size
                     col = mouse_x // board.cell_size
                     board.handle_click(row, col)
@@ -136,7 +136,7 @@ def main():
                 elif btn_new.collidepoint(mouse_x, mouse_y):
                     mode = draw_menu(screen)
                     # Reset lại bàn cờ với chế độ mới
-                    board = Board(screen, 100)
+                    board = Board(screen, 80)
                     if mode == "easy":
                         board.ai_level = 1
                         board.play_with_ai = True
