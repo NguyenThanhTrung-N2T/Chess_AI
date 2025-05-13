@@ -8,7 +8,7 @@ screen_h = 700
 
 button_text_size = 16
 title_text_size = 30
-icon_size = (40, 40)
+
 
 cell_size = 80
 offset_x_board = 30
@@ -49,7 +49,7 @@ def draw_menu(screen):
     clock = pygame.time.Clock()
     button_font = pygame.font.Font("fonts/pixelmix_bold.ttf", button_text_size)
     title_font = pygame.font.Font("fonts/pixelmix_bold.ttf", title_text_size)
-
+    icon_size = (40, 40)
     # Load icon
     icon_pvp = pygame.transform.scale(pygame.image.load("assets/nguoi_vs_nguoi.png"), icon_size)
     icon_ai_de = pygame.transform.scale(pygame.image.load("assets/ai_de.png"), icon_size)
@@ -116,8 +116,6 @@ def main():
     if mode is None:
         return
 
-    print("Selected mode:", mode)
-
     board = Board(screen, cell_size)  # Tạo bàn cờ mới
 
     if mode == "easy":
@@ -133,7 +131,10 @@ def main():
         board.play_with_ai = True
         board.ai = ChessAI(level=3)
 
-    btn_color = (140, 120, 200)
+    btn_color = (96, 132, 188)
+    icon_size = (26, 26)
+    offset_btn = 16
+    offset_txt = 16
     button_font = pygame.font.Font("fonts/pixelmix_bold.ttf", button_text_size)
     txt_new = button_font.render("New Game", True, btn_text_color)
     txt_undo = button_font.render("Undo", True, btn_text_color)
@@ -148,6 +149,10 @@ def main():
     btn_undo = pygame.Rect(x_btn, y_undo_btn, btn_w, btn_h)
     btn_reset = pygame.Rect(x_btn, y_reset_btn, btn_w, btn_h)
 
+    rect_new = icon_new.get_rect(centery = btn_new.centery, left = btn_new.left + offset_btn)
+    rect_undo = icon_undo.get_rect(centery = btn_undo.centery, left = btn_undo.left + offset_btn)
+    rect_reset = icon_reset.get_rect(centery = btn_reset.centery, left = btn_reset.left + offset_btn)
+
     # Thiết lập viền bàn cờ
     board_border = pygame.image.load("images/board_border.png")
     board_border = pygame.transform.scale(board_border, board_size)
@@ -156,15 +161,16 @@ def main():
     running = True
     while running:
         #background and buttons
+        screen.fill(background_color) 
         mouse_pos = pygame.mouse.get_pos()
-        def draw_button(btn, txt, icon = 0):
+        def draw_button(btn, txt, icon, rect):
             color = tuple(c + 20 for c in btn_color) if is_hovered(btn, mouse_pos) else btn_color
-            pygame.draw.rect(screen, color, btn)
-            screen.blit(txt, txt.get_rect(center=btn.center))
-            #screen.blit(icon, btn)
-        draw_button(btn_new, txt_new)
-        draw_button(btn_undo, txt_undo)
-        draw_button(btn_reset, txt_reset)
+            pygame.draw.rect(screen, color, btn, border_radius = 10)
+            screen.blit(txt, txt.get_rect(centery = btn.centery, left = btn.left + offset_btn + offset_txt + icon_size[0]))
+            screen.blit(icon, rect)
+        draw_button(btn_new, txt_new, icon_new, rect_new)
+        draw_button(btn_undo, txt_undo, icon_undo, rect_undo)
+        draw_button(btn_reset, txt_reset, icon_reset, rect_reset)
 
         #board
         screen.blit(board_border, board_border_rect) 
