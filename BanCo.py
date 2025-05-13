@@ -3,12 +3,17 @@ import os
 import chess  # Thư viện chess để quản lý bàn cờ 
 from AI import ChessAI  # Thư viện AI để xử lý nước đi của máy
 
+white_cell_color = (255,255,255)
+black_cell_color = (127,164,209)
+selected_square_color = (255, 223, 100)
+king_in_check_color = (255,80,80)
+
 class Board:
     def __init__(self, screen, size=80):
         self.screen = screen
         self.size = int(size)
         self.cell_size = self.size
-        self.colors = [(240, 217, 181), (181, 136, 99)]  # Màu bàn cờ
+        self.colors = [white_cell_color, black_cell_color]  # Màu bàn cờ
         self.selected_square = None
         self.images = self.load_images()
         self.chess_board = chess.Board()
@@ -46,10 +51,10 @@ class Board:
                 pygame.draw.rect(self.screen, color, rect)
 
                 if self.selected_square == (row, col):
-                    pygame.draw.rect(self.screen, (255, 0, 0), rect, 5)
+                    pygame.draw.rect(self.screen, selected_square_color, rect, 5)
 
                 if self.king_in_check_square == (row, col):
-                    pygame.draw.rect(self.screen, (255, 255, 0), rect, 5)
+                    pygame.draw.rect(self.screen, king_in_check_color, rect, 5)
 
         if self.status_message:
             msg = self.font.render(self.status_message, True, (255, 0, 0))
@@ -194,7 +199,7 @@ class Board:
                 row_check = 7 - chess.square_rank(king_sq)
                 col_check = chess.square_file(king_sq)
                 self.king_in_check_square = (row_check, col_check)
-                self.status_message = ">> Vua đang bị chiếu!"
+                self.status_message = ">> Your king is in check!"
             else:
                 self.king_in_check_square = None
                 self.status_message = ""

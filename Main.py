@@ -8,6 +8,10 @@ screen_h = 640
 button_text_size = 16
 title_text_size = 30
 icon_size = (40, 40)
+offset_x_board = 0
+offset_y_board = 0
+offset_x_piece = 0
+offset_y_piece = -10
 
 def is_hovered(rect, mouse_pos):
     return rect.collidepoint(mouse_pos)
@@ -78,8 +82,6 @@ def draw_menu(screen):
                         selected_mode = btn["mode"]
                         running = False
     return selected_mode
-
-
 
 def main():
     pygame.init()
@@ -162,8 +164,8 @@ def main():
 
         # Vẽ bàn cờ và các quân cờ
         screen.fill((239, 249, 253)) #background
-        board.draw_board(offset_x=0, offset_y=0) 
-        board.draw_pieces(offset_x=0, offset_y=0)
+        board.draw_board(offset_x = offset_x_board, offset_y = offset_y_board) 
+        board.draw_pieces(offset_x = offset_x_piece, offset_y = offset_y_piece)
 
         # Vẽ các nút chức năng
         pygame.draw.rect(screen, button_color, btn_new, border_radius=10)
