@@ -7,6 +7,7 @@ white_cell_color = (255,255,255)
 black_cell_color = (127,164,209)
 selected_square_color = (255, 223, 100)
 king_in_check_color = (255,80,80)
+highlight_square_color = (140, 230, 150)
 
 class Board:
     def __init__(self, screen, size=80):
@@ -42,25 +43,37 @@ class Board:
                 else:
                     print(f"Không tìm thấy hình ảnh: {path}")
         return images
-
-    def draw_board(self, offset_x=0, offset_y=0):
+    
+    def highlight_squares(self, offset_x, offset_y):
+        if self.selected_square is None:
+            return
+        row, col = self.selected_square
+        square = chess.square(col, 7 - row)
+        possible_moves = [move.to_square for move in self.chess_board.legal_moves if move.from_square == square]
+        if possible_moves:
+            for move in possible_moves:
+                row = 7 - move // 8
+                col = move % 8
+                if row < 0 or col < 0:
+                    continue
+                rect = pygame.Rect(offset_x + col * self.cell_size, offset_y + row * self.cell_size, self.cell_size, self.cell_size)
+                pygame.draw.rect(self.screen, highlight_square_color, rect, 5)
+    
+    def draw_board(self, offset_x, offset_y):
         for row in range(8):
             for col in range(8):
                 color = self.colors[(row + col) % 2]
                 rect = pygame.Rect(offset_x + col * self.cell_size, offset_y + row * self.cell_size, self.cell_size, self.cell_size)
                 pygame.draw.rect(self.screen, color, rect)
-
                 if self.selected_square == (row, col):
                     pygame.draw.rect(self.screen, selected_square_color, rect, 5)
-
                 if self.king_in_check_square == (row, col):
                     pygame.draw.rect(self.screen, king_in_check_color, rect, 5)
-
         if self.status_message:
             msg = self.font.render(self.status_message, True, (255, 0, 0))
             self.screen.blit(msg, (10, 8 * self.cell_size + 10))
 
-    def draw_pieces(self, offset_x=0, offset_y=0):
+    def draw_pieces(self, offset_x, offset_y):
         for row in range(8):
             for col in range(8):
                 square = chess.square(col, 7 - row)
@@ -83,7 +96,7 @@ class Board:
     def handle_click(self, row, col):
         if self.game_over:
             return
-
+        
         square = chess.square(col, 7 - row)
 
         if self.selected_square is None:
@@ -95,8 +108,16 @@ class Board:
             from_row, from_col = self.selected_square
             from_square = chess.square(from_col, 7 - from_row)
             to_square = square
-            move = chess.Move(from_square, to_square)
 
+            # Nếu vừa ấn quân mình thì không phải nước đi mà chỉ chọn quân khác
+            selected_piece = self.chess_board.piece_at(from_square)
+            clicked_piece = self.chess_board.piece_at(to_square)
+            if clicked_piece and clicked_piece.color == selected_piece.color:
+                self.selected_square = (row, col)
+                return
+            
+            # Nước đi
+            move = chess.Move(from_square, to_square)
             piece = self.chess_board.piece_at(from_square)
             to_rank = chess.square_rank(to_square)
 
@@ -119,7 +140,7 @@ class Board:
                     row_check = 7 - chess.square_rank(king_sq)
                     col_check = chess.square_file(king_sq)
                     self.king_in_check_square = (row_check, col_check)
-                    self.status_message = ">> King is being checkmated!"
+                    self.status_message = ">> Your king is in check "
                 else:
                     self.king_in_check_square = None
                     self.status_message = ""
@@ -142,7 +163,7 @@ class Board:
                             row_check = 7 - chess.square_rank(king_sq)
                             col_check = chess.square_file(king_sq)
                             self.king_in_check_square = (row_check, col_check)
-                            self.status_message = ">> Vua đang bị chiếu!"
+                            self.status_message = ">> Your king is in check "
                         else:
                             self.king_in_check_square = None
                             self.status_message = ""
@@ -153,7 +174,7 @@ class Board:
                         print(f"[LỖI] AI trả về nước đi không hợp lệ: {ai_move} - {self.chess_board.fen()}")
 
             else:
-                self.status_message = ">> Nước đi không hợp lệ."
+                self.status_message = ">> Invalid move "
 
             self.selected_square = None
 
@@ -205,63 +226,73 @@ class Board:
                 self.status_message = ""
 
     def show_promotion_menu(self):
-        overlay = pygame.Surface((400, 400))
+        menu_color =  (230, 220, 255)
+        menu_border_color = (100, 80, 160)
+        menu_btn_color = (140, 120, 200)
+        icon_size = (70, 70)
+        text_color = (30, 60, 30)
+        start_x = 270
+        start_y = 270
+        offset = 5
+        menu_size = 160
+        menu_size1 = 40
+        border_size = 6
+        text_size = 19
+        btn_size = 70
+        border_thickness = 6
+        gap = 10  
+
+        menu_rect = pygame.Rect(start_x, start_y, menu_size, menu_size)
+        border_rect = pygame.Rect(0, 0, menu_size + border_thickness, menu_size + border_thickness)
+        border_rect.center = menu_rect.center
+
+        menu_rect1 = pygame.Rect(0, 0, menu_size,  menu_size1)
+        menu_rect1.bottomleft = (menu_rect.left, menu_rect.top - border_thickness - 1)
+        border_rect1 = pygame.Rect(0, 0, menu_size + border_thickness, menu_size1 + border_thickness)
+        border_rect1.center = menu_rect1.center
+
+        font = pygame.font.Font("fonts/pixelmix_bold.ttf", text_size)
+        text = font.render("PROMOTION", False, text_color)
+        text_rect = text.get_rect(center = menu_rect1.center)
+        overlay = pygame.Surface((menu_size, menu_size), pygame.SRCALPHA)
         overlay.set_alpha(230)
-        overlay.fill((241, 218, 91))
-
-        button_font = pygame.font.Font("fonts/pixelmix.ttf", 16)
-        button_color = (247, 81, 90)
-        text_color = (255, 255, 255)
-
-        # Tính toán toạ độ dọc để căn giữa danh sách 4 nút
-        btn_width = 300
-        btn_height = 50
-        gap = 20  # khoảng cách giữa các nút
-        total_height = 4 * btn_height + 3 * gap
-        start_y = (400 - total_height) // 2
-
-        # Căn giữa theo chiều ngang
-        start_x = (400 - btn_width) // 2
-
-        btn_queen  = pygame.Rect(start_x, start_y + 0 * (btn_height + gap), btn_width, btn_height)
-        btn_bishop = pygame.Rect(start_x, start_y + 1 * (btn_height + gap), btn_width, btn_height)
-        btn_knight = pygame.Rect(start_x, start_y + 2 * (btn_height + gap), btn_width, btn_height)
-        btn_rook   = pygame.Rect(start_x, start_y + 3 * (btn_height + gap), btn_width, btn_height)
+        overlay.fill(menu_color)
+        
+        btn_queen  = pygame.Rect(offset + start_x, offset + start_y , btn_size, btn_size)
+        btn_bishop = pygame.Rect(offset + start_x + gap + btn_size, offset + start_y ,btn_size, btn_size)
+        btn_knight = pygame.Rect(offset + start_x, offset + start_y + gap + btn_size, btn_size, btn_size)
+        btn_rook   = pygame.Rect(offset + start_x + gap + btn_size, offset + start_y + gap + btn_size, btn_size, btn_size)
 
         # Load và resize icon
-        queen_icon = pygame.image.load("images/queen.png")
-        rook_icon = pygame.image.load("images/rook.png")
-        bishop_icon = pygame.image.load("images/bishop.png")
-        knight_icon = pygame.image.load("images/knight.png")
+        color = 'w' if self.chess_board.turn == chess.WHITE else 'b'
+        queen_icon  = pygame.image.load(f"images/{color}_queen.png")
+        rook_icon   = pygame.image.load(f"images/{color}_rook.png")
+        bishop_icon = pygame.image.load(f"images/{color}_bishop.png")
+        knight_icon = pygame.image.load(f"images/{color}_knight.png")
 
-        icon_size = (32, 32)
         queen_icon = pygame.transform.scale(queen_icon, icon_size)
         rook_icon = pygame.transform.scale(rook_icon, icon_size)
         bishop_icon = pygame.transform.scale(bishop_icon, icon_size)
         knight_icon = pygame.transform.scale(knight_icon, icon_size)
+
         while True:
-            self.screen.blit(overlay, (0, 0))
-            pygame.draw.rect(self.screen, button_color, btn_queen)
-            pygame.draw.rect(self.screen, button_color, btn_rook)
-            pygame.draw.rect(self.screen, button_color, btn_bishop)
-            pygame.draw.rect(self.screen, button_color, btn_knight)
-            def draw_button(rect, icon, text):
-                text_surface = button_font.render(text, True, text_color)
-                spacing = 10
-                total_width = icon.get_width() + spacing + text_surface.get_width()
+            mouse_pos = pygame.mouse.get_pos()
 
-                # Tính điểm bắt đầu để căn giữa cụm icon + text trong button
-                start_x = rect.x + (rect.width - total_width) // 2
-                icon_y = rect.y + (rect.height - icon.get_height()) // 2
-                text_y = rect.y + (rect.height - text_surface.get_height()) // 2
-
-                self.screen.blit(icon, (start_x, icon_y))
-                self.screen.blit(text_surface, (start_x + icon.get_width() + spacing, text_y))
-
-            draw_button(btn_queen, queen_icon, "Queen")
-            draw_button(btn_rook, rook_icon, "Rook")
-            draw_button(btn_bishop, bishop_icon, "Bishop")
-            draw_button(btn_knight, knight_icon, "Knight")
+            pygame.draw.rect(self.screen, menu_border_color, border_rect, width=border_size)
+            pygame.draw.rect(self.screen, menu_border_color, border_rect1, width=border_size)
+            self.screen.blit(overlay, menu_rect.topleft)
+            pygame.draw.rect(self.screen, menu_color, menu_rect1)    
+            self.screen.blit(text, text_rect)
+            
+            def draw_button(btn, icon):
+                is_hovered = btn.collidepoint(mouse_pos)
+                color = tuple(c + 20 for c in menu_btn_color) if is_hovered else menu_btn_color
+                pygame.draw.rect(self.screen, color, btn)
+                self.screen.blit(icon, (btn.left, btn.top - offset))
+            draw_button(btn_queen, queen_icon)
+            draw_button(btn_bishop, bishop_icon)
+            draw_button(btn_knight, knight_icon)
+            draw_button(btn_rook, rook_icon)
 
             pygame.display.flip()
             for event in pygame.event.get():

@@ -3,18 +3,40 @@ import os
 from BanCo import Board  # Import lớp Board của bạn
 from AI import ChessAI  # Import lớp AI của bạn
 
-screen_w = 900
-screen_h = 640
+screen_w = 1000
+screen_h = 700
+
 button_text_size = 16
 title_text_size = 30
 icon_size = (40, 40)
-offset_x_board = 0
-offset_y_board = 0
-offset_x_piece = 0
-offset_y_piece = -10
+
+cell_size = 80
+offset_x_board = 30
+offset_y_board = 30
+offset_x_piece = 30
+offset_y_piece = 20
+board_size = (699,699)
+background_color = (239, 249, 253)
+
+x_btn = 760
+y_new_btn = 100
+y_undo_btn = 180
+y_reset_btn = 260
+btn_w = 180
+btn_h = 50
+btn_text_color = (255,255,255)
+
+game_over_text_color = (255, 215, 0)
 
 def is_hovered(rect, mouse_pos):
     return rect.collidepoint(mouse_pos)
+
+def mouse_in_board(mouse_x, mouse_y):
+    if mouse_x < offset_x_board or mouse_x > board_size[0] - offset_x_board:
+        return False
+    if mouse_y < offset_y_board or mouse_y > board_size[1] - offset_y_board:
+        return False
+    return True 
 
 def draw_menu(screen):
     try:
@@ -85,7 +107,7 @@ def draw_menu(screen):
 
 def main():
     pygame.init()
-    screen = pygame.display.set_mode((screen_w,screen_h))
+    screen = pygame.display.set_mode((screen_w,screen_h), pygame.SCALED)
     pygame.display.set_caption("Chess Game")
     clock = pygame.time.Clock()
 
@@ -96,7 +118,7 @@ def main():
 
     print("Selected mode:", mode)
 
-    board = Board(screen, 80)  # Tạo bàn cờ mới
+    board = Board(screen, cell_size)  # Tạo bàn cờ mới
 
     if mode == "easy":
         board.ai_level = 1
@@ -111,21 +133,57 @@ def main():
         board.play_with_ai = True
         board.ai = ChessAI(level=3)
 
-    # Thiết lập phông chữ và màu sắc cho nút
+    btn_color = (140, 120, 200)
     button_font = pygame.font.Font("fonts/pixelmix_bold.ttf", button_text_size)
-    button_color = (100, 150, 250)
+    txt_new = button_font.render("New Game", True, btn_text_color)
+    txt_undo = button_font.render("Undo", True, btn_text_color)
+    txt_reset = button_font.render("Reset", True, btn_text_color)
 
     # Thiết lập các nút điều khiển
-    icon_new = pygame.transform.scale(pygame.image.load("assets/new_game.png"), (40, 40))
-    icon_undo = pygame.transform.scale(pygame.image.load("assets/undo.png"), (40, 40))
-    icon_reset = pygame.transform.scale(pygame.image.load("assets/reset.png"), (40, 40))
+    icon_new = pygame.transform.scale(pygame.image.load("assets/new_game.png"), icon_size)
+    icon_undo = pygame.transform.scale(pygame.image.load("assets/undo.png"), icon_size)
+    icon_reset = pygame.transform.scale(pygame.image.load("assets/reset.png"), icon_size)
 
-    btn_new = pygame.Rect(680, 100, 180, 50)
-    btn_undo = pygame.Rect(680, 180, 180, 50)
-    btn_reset = pygame.Rect(680, 260, 180, 50)
+    btn_new = pygame.Rect(x_btn, y_new_btn, btn_w, btn_h)
+    btn_undo = pygame.Rect(x_btn, y_undo_btn, btn_w, btn_h)
+    btn_reset = pygame.Rect(x_btn, y_reset_btn, btn_w, btn_h)
 
+    # Thiết lập viền bàn cờ
+    board_border = pygame.image.load("images/board_border.png")
+    board_border = pygame.transform.scale(board_border, board_size)
+    board_border_rect = board_border.get_rect(topleft = (0,0))
+    
     running = True
     while running:
+        #background and buttons
+        mouse_pos = pygame.mouse.get_pos()
+        def draw_button(btn, txt, icon = 0):
+            color = tuple(c + 20 for c in btn_color) if is_hovered(btn, mouse_pos) else btn_color
+            pygame.draw.rect(screen, color, btn)
+            screen.blit(txt, txt.get_rect(center=btn.center))
+            #screen.blit(icon, btn)
+        draw_button(btn_new, txt_new)
+        draw_button(btn_undo, txt_undo)
+        draw_button(btn_reset, txt_reset)
+
+        #board
+        screen.blit(board_border, board_border_rect) 
+        board.draw_board(offset_x = offset_x_board, offset_y = offset_y_board) 
+        board.highlight_squares(offset_x = offset_x_board, offset_y = offset_y_board)
+        board.draw_pieces(offset_x = offset_x_piece, offset_y = offset_y_piece)
+
+        # Hiển thị thông báo kết quả khi game kết thúc
+        if board.game_over:
+            # Phần 1: Kết thúc trò chơi
+            game_over_message = ">> End Game <<"
+            game_over_text = button_font.render(game_over_message, True, game_over_text_color)
+            screen.blit(game_over_text, (350, 350))  # Hiển thị "Kết thúc" ở giữa bàn cờ
+
+            # Phần 2: Thông báo người thắng hoặc hòa
+            result_message = board.status_message
+            result_text = button_font.render(result_message, True, game_over_text_color)
+            screen.blit(result_text, (350, 390))  # Hiển thị kết quả thắng hoặc hòa ở dưới "Kết thúc"
+        
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -133,16 +191,16 @@ def main():
                 mouse_x, mouse_y = pygame.mouse.get_pos()
 
                 # Xử lý sự kiện nhấn vào ô cờ
-                if mouse_x < 640:
-                    row = mouse_y // board.cell_size
-                    col = mouse_x // board.cell_size
+                if mouse_in_board(mouse_x, mouse_y):
+                    row = (mouse_y - offset_y_board) // board.cell_size
+                    col = (mouse_x - offset_x_board) // board.cell_size
                     board.handle_click(row, col)
 
                 # Xử lý sự kiện nhấn nút
                 elif btn_new.collidepoint(mouse_x, mouse_y):
                     mode = draw_menu(screen)
                     # Reset lại bàn cờ với chế độ mới
-                    board = Board(screen, 80)
+                    board = Board(screen, cell_size)
                     if mode == "easy":
                         board.ai_level = 1
                         board.play_with_ai = True
@@ -161,41 +219,6 @@ def main():
 
                 elif btn_reset.collidepoint(mouse_x, mouse_y):
                     board.reset_game()  # Đặt lại trò chơi
-
-        # Vẽ bàn cờ và các quân cờ
-        screen.fill((239, 249, 253)) #background
-        board.draw_board(offset_x = offset_x_board, offset_y = offset_y_board) 
-        board.draw_pieces(offset_x = offset_x_piece, offset_y = offset_y_piece)
-
-        # Vẽ các nút chức năng
-        pygame.draw.rect(screen, button_color, btn_new, border_radius=10)
-        screen.blit(icon_new, (btn_new.x + 10, btn_new.y + 5))
-        txt_new = button_font.render("New Game", True, (255, 255, 255))
-        screen.blit(txt_new, (btn_new.x + 60, btn_new.y + (50 - txt_new.get_height()) // 2))
-
-        pygame.draw.rect(screen, button_color, btn_undo, border_radius=10)
-        screen.blit(icon_undo, (btn_undo.x + 10, btn_undo.y + 5))
-        txt_undo = button_font.render("Undo", True, (255, 255, 255))
-        rect_undo = txt_undo.get_rect(center=(btn_undo.centerx + 15, btn_undo.centery))
-        screen.blit(txt_undo, rect_undo)
-
-        pygame.draw.rect(screen, button_color, btn_reset, border_radius=10)
-        screen.blit(icon_reset, (btn_reset.x + 10, btn_reset.y + 5))
-        txt_reset = button_font.render("Reset", True, (255, 255, 255))
-        rect_reset = txt_reset.get_rect(center=(btn_reset.centerx + 10, btn_reset.centery))
-        screen.blit(txt_reset, rect_reset)
-
-        # Hiển thị thông báo kết quả khi game kết thúc
-        if board.game_over:
-            # Phần 1: Kết thúc trò chơi
-            game_over_message = ">> End Game <<"
-            game_over_text = button_font.render(game_over_message, True, (255, 0, 0))
-            screen.blit(game_over_text, (350, 350))  # Hiển thị "Kết thúc" ở giữa bàn cờ
-
-            # Phần 2: Thông báo người thắng hoặc hòa
-            result_message = board.status_message
-            result_text = button_font.render(result_message, True, (255, 0, 0))
-            screen.blit(result_text, (350, 390))  # Hiển thị kết quả thắng hoặc hòa ở dưới "Kết thúc"
 
         pygame.display.flip()
         clock.tick(60)
