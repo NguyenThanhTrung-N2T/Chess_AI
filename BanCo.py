@@ -71,7 +71,7 @@ class Board:
                     pygame.draw.rect(self.screen, king_in_check_color, rect, 5)
         if self.status_message:
             msg = self.font.render(self.status_message, True, (255, 0, 0))
-            self.screen.blit(msg, (10, 8 * self.cell_size + 10))
+            self.screen.blit(msg, (700, 8 * self.cell_size + 10))
 
     def draw_pieces(self, offset_x, offset_y):
         for row in range(8):

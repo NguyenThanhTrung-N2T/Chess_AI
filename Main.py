@@ -73,7 +73,7 @@ def draw_menu(screen):
         mouse_click = pygame.mouse.get_pressed()[0]
 
         title_text = title_font.render("CHOOSE A GAME MODE", True, (80, 84, 24))
-        screen.blit(title_text, ((screen_w - title_text.get_width()) // 2, 60))
+        screen.blit(title_text, ((screen_w - title_text.get_width() -96 ) // 2, 60))
 
         for btn in buttons:
             rect       = btn["rect"]
