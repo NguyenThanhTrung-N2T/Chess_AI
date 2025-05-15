@@ -210,16 +210,16 @@ class Board:
             self.status_message = f"{winner} wins !"
             return True
         elif self.chess_board.is_stalemate():
-            self.status_message = "Draw by stalemate !"
+            self.status_message = "Draw by Stalemate !"
             return True
         elif self.chess_board.is_insufficient_material():
-            self.status_message = "Draw by enough pieces !"
+            self.status_message = "Draw by Insufficient Material !"
             return True
         elif self.chess_board.can_claim_fifty_moves():
-            self.status_message = "Draw by 50 moves !"
+            self.status_message = "Draw by 50 Moves !"
             return True
         elif self.chess_board.can_claim_threefold_repetition():
-            self.status_message = "Draw by threefold repetiton !"
+            self.status_message = "Draw by Threefold Repetiton !"
             return True
         return False
 
