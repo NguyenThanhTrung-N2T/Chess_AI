@@ -67,7 +67,7 @@ def draw_menu(screen):
         mouse_click = pygame.mouse.get_pressed()[0]
 
         title_text = title_font.render("CHOOSE A GAME MODE", True, (80, 84, 24))
-        screen.blit(title_text, ((screen_w - title_text.get_width() ) // 2, 60))
+        screen.blit(title_text, ((screen_w - title_text.get_width()) // 2, 60))
 
         for btn in buttons:
             rect       = btn["rect"]
@@ -113,14 +113,13 @@ gap_popup_n_btn = 12
 gap_popup_n_txt = 10
 popup_btn_text_size = 13
     
-
 def result_popup(screen, board):
     global popup_y
     speed = 50
     winner = "w" if not board.chess_board.turn else "b"
     font = pygame.font.Font("fonts/pixelmix_bold.ttf", button_text_size)
     font2 = pygame.font.Font("fonts/pixelmix_bold.ttf", button_text_size - 3)
-    font3 = pygame.font.Font("fonts/pixelmix_bold.ttf", button_text_size + 3)
+    font3 = pygame.font.Font("fonts/pixelmix_bold.ttf", button_text_size + 5)
     if winner == "b":
         popup_color = (112, 128, 159)
         popup_border_color = (popup_color[0]-20, popup_color[1]-20, popup_color[2]-20)

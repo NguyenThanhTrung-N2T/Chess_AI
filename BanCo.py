@@ -90,7 +90,8 @@ class Board:
             pygame.draw.rect(self.screen, last_move_square_color, to_rect)  
         if self.status_message:
             msg = self.font.render(self.status_message, True, (255, 0, 0))
-            self.screen.blit(msg, msg_pos)
+            if self.status_message not in ("White wins !", "Black wins !"):
+                self.screen.blit(msg, msg_pos)
 
     def draw_pieces(self, offset_x, offset_y):
         for row in range(8):
