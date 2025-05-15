@@ -8,9 +8,12 @@ black_cell_color = (127,164,209)
 selected_square_color = (255, 223, 100)
 king_in_check_color = (255,80,80)
 highlight_square_color = (140, 230, 150)
+last_move_square_color = (255, 165, 100)
+border_thickness = 5
+msg_pos = (726, 500)
 
 class Board:
-    def __init__(self, screen, size=80):
+    def __init__(self, screen, size = 80):
         self.screen = screen
         self.size = int(size)
         self.cell_size = self.size
@@ -20,13 +23,16 @@ class Board:
         self.chess_board = chess.Board()
         self.king_in_check_square = None
         self.move_history = []
-        self.font = pygame.font.Font("fonts/pixelmix.ttf", 16)
+        self.font = pygame.font.Font("fonts/pixelmix.ttf", 15)
         self.status_message = ""
         self.game_over = False
         self.play_with_ai = False
         self.ai_player = chess.BLACK  # Máy chơi là bên nào
         self.ai_level = 2  # dễ = 1, trung bình = 2, khó = 3
         self.ai = ChessAI(level=self.ai_level)
+
+    def is_white_turn(self):
+        return 1 if self.chess_board.turn == chess.WHITE else 0
 
     def load_images(self):
         pieces = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king']
@@ -57,7 +63,7 @@ class Board:
                 if row < 0 or col < 0:
                     continue
                 rect = pygame.Rect(offset_x + col * self.cell_size, offset_y + row * self.cell_size, self.cell_size, self.cell_size)
-                pygame.draw.rect(self.screen, highlight_square_color, rect, 5)
+                pygame.draw.rect(self.screen, highlight_square_color, rect, border_thickness)
     
     def draw_board(self, offset_x, offset_y):
         for row in range(8):
@@ -65,13 +71,26 @@ class Board:
                 color = self.colors[(row + col) % 2]
                 rect = pygame.Rect(offset_x + col * self.cell_size, offset_y + row * self.cell_size, self.cell_size, self.cell_size)
                 pygame.draw.rect(self.screen, color, rect)
-                if self.selected_square == (row, col):
-                    pygame.draw.rect(self.screen, selected_square_color, rect, 5)
                 if self.king_in_check_square == (row, col):
-                    pygame.draw.rect(self.screen, king_in_check_color, rect, 5)
+                    pygame.draw.rect(self.screen, king_in_check_color, rect, border_thickness)
+                if self.selected_square == (row, col):
+                    pygame.draw.rect(self.screen, selected_square_color, rect, border_thickness)
+        if self.move_history:
+            last_move = chess.Move.from_uci(self.move_history[-1])
+            from_square = last_move.from_square
+            to_square = last_move.to_square
+
+            from_row, from_col = 7 - chess.square_rank(from_square), chess.square_file(from_square)
+            to_row, to_col = 7 - chess.square_rank(to_square), chess.square_file(to_square)
+
+            from_rect = pygame.Rect(offset_x + from_col * self.cell_size, offset_y + from_row * self.cell_size, self.cell_size, self.cell_size)
+            to_rect = pygame.Rect(offset_x + to_col * self.cell_size, offset_y + to_row * self.cell_size, self.cell_size, self.cell_size)
+
+            pygame.draw.rect(self.screen, last_move_square_color, from_rect)
+            pygame.draw.rect(self.screen, last_move_square_color, to_rect)  
         if self.status_message:
             msg = self.font.render(self.status_message, True, (255, 0, 0))
-            self.screen.blit(msg, (10, 8 * self.cell_size + 10))
+            self.screen.blit(msg, msg_pos)
 
     def draw_pieces(self, offset_x, offset_y):
         for row in range(8):
@@ -102,6 +121,7 @@ class Board:
         if self.selected_square is None:
             if self.is_valid_selection(row, col):
                 self.selected_square = (row, col)
+                self.status_message = ">> Your king is in check" if self.chess_board.is_check() else ""
             else:
                 self.status_message = ">> Can't select this cell"
         else:
@@ -132,7 +152,7 @@ class Board:
                 move = chess.Move(from_square, to_square)
 
             if move in self.chess_board.legal_moves:
-                self.move_history.append(self.chess_board.san(move))
+                self.move_history.append(move.uci())
                 self.chess_board.push(move)
 
                 if self.chess_board.is_check():
@@ -156,7 +176,7 @@ class Board:
                     if ai_move and ai_move in self.chess_board.legal_moves:
                         move_san = self.chess_board.san(ai_move)  # Gọi san() trước khi push()
                         self.chess_board.push(ai_move)
-                        self.move_history.append(move_san)
+                        self.move_history.append(ai_move.uci())
 
                         if self.chess_board.is_check():
                             king_sq = self.chess_board.king(self.chess_board.turn)
@@ -186,19 +206,19 @@ class Board:
     def check_game_end(self):
         if self.chess_board.is_checkmate():
             winner = "White" if not self.chess_board.turn else "Black"
-            self.status_message = f">> {winner} win !"
+            self.status_message = f"{winner} wins !"
             return True
         elif self.chess_board.is_stalemate():
-            self.status_message = ">> Draw by stalemate !"
+            self.status_message = "Draw by stalemate !"
             return True
         elif self.chess_board.is_insufficient_material():
-            self.status_message = ">> Draw by enough pieces !"
+            self.status_message = "Draw by enough pieces !"
             return True
         elif self.chess_board.can_claim_fifty_moves():
-            self.status_message = ">> Draw by 50 moves !"
+            self.status_message = "Draw by 50 moves !"
             return True
         elif self.chess_board.can_claim_threefold_repetition():
-            self.status_message = ">> Draw by threefold repetiton !"
+            self.status_message = "Draw by threefold repetiton !"
             return True
         return False
 
@@ -224,6 +244,7 @@ class Board:
             else:
                 self.king_in_check_square = None
                 self.status_message = ""
+        self.game_over = False
 
     def show_promotion_menu(self):
         menu_color =  (230, 220, 255)
