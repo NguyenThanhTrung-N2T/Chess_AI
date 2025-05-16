@@ -7,7 +7,13 @@ screen_w = 1000
 screen_h = 700
 
 button_text_size = 16
-title_text_size = 30
+subtitle_text_size = 18
+title_text_size = 40
+gap_screen_n_title = 50
+gap_title_n_subtitle = 70
+gap_btn_n_btn = 30
+title_text_color = (80, 84, 24)
+subtitle_text_color = (80, 84, 24)
 
 cell_size = 80
 offset_x_board = 30
@@ -34,7 +40,7 @@ def mouse_in_board(mouse_x, mouse_y):
 
 def draw_menu(screen):
     try:
-        background_image = pygame.image.load("assets/te.jpg")
+        background_image = pygame.image.load("assets/background.png")
         background_image = pygame.transform.scale(background_image, (screen_w,screen_h))
     except pygame.error as e:
         print(f"Error loading image: {e}")
@@ -43,7 +49,15 @@ def draw_menu(screen):
     clock = pygame.time.Clock()
     button_font = pygame.font.Font("fonts/pixelmix_bold.ttf", button_text_size)
     title_font = pygame.font.Font("fonts/pixelmix_bold.ttf", title_text_size)
+    subtitle_font = pygame.font.Font("fonts/pixelmix_bold.ttf", subtitle_text_size)
     icon_size = (40, 40)
+
+    # Title
+    title_text = title_font.render("PIXEL CHESS GAME", False, title_text_color)
+    subtitle_text = subtitle_font.render("Choose a game mode", False, subtitle_text_color)
+    rect_title_text = title_text.get_rect(centerx = screen_w//2, top = gap_screen_n_title)
+    rect_subtitle_text = subtitle_text.get_rect(centerx = screen_w//2, top = rect_title_text.bottom + gap_title_n_subtitle )
+
     # Load icon
     icon_pvp = pygame.transform.scale(pygame.image.load("assets/nguoi_vs_nguoi.png"), icon_size)
     icon_ai_de = pygame.transform.scale(pygame.image.load("assets/ai_de.png"), icon_size)
@@ -51,11 +65,20 @@ def draw_menu(screen):
     icon_ai_kho = pygame.transform.scale(pygame.image.load("assets/ai_kho.png"), icon_size)
 
     # Định nghĩa các button
+    rect_btn = pygame.Rect(0, 0, 320, 60)
+    rect_btn.centerx, rect_btn.top = screen_w // 2, rect_subtitle_text.bottom + gap_btn_n_btn
+    rect_btn1 = rect_btn.copy()
+    rect_btn2 = rect_btn.copy()
+    rect_btn3 = rect_btn.copy()
+    rect_btn1.top = rect_btn.bottom + gap_btn_n_btn
+    rect_btn2.top = rect_btn1.bottom + gap_btn_n_btn
+    rect_btn3.top = rect_btn2.bottom + gap_btn_n_btn
+    
     buttons = [
-        {"rect": pygame.Rect(290, 150, 320, 60), "text": "Player vs Player", "icon": icon_pvp,   "color": (100, 200, 100), "mode": "pvp"},
-        {"rect": pygame.Rect(290, 250, 320, 60), "text": "Player vs AI (Easy)", "icon": icon_ai_de, "color": (100, 150, 250), "mode": "easy"},
-        {"rect": pygame.Rect(290, 350, 320, 60), "text": "Player vs AI (Normal)", "icon": icon_ai_tb, "color": (250, 100, 100), "mode": "normal"},
-        {"rect": pygame.Rect(290, 450, 320, 60), "text": "Player vs AI (Hard)", "icon": icon_ai_kho, "color": (250, 150, 100), "mode": "hard"},
+        {"rect": rect_btn, "text": "Player vs Player", "icon": icon_pvp,   "color": (74, 144, 226), "mode": "pvp"},
+        {"rect": rect_btn1, "text": "Player vs AI (Easy)", "icon": icon_ai_de, "color": (80, 227, 194), "mode": "easy"},
+        {"rect": rect_btn2, "text": "Player vs AI (Normal)", "icon": icon_ai_tb, "color": (245, 166, 35), "mode": "normal"},
+        {"rect": rect_btn3, "text": "Player vs AI (Hard)", "icon": icon_ai_kho, "color": (208, 22, 27), "mode": "hard"},
     ]
 
     selected_mode = None
@@ -66,8 +89,8 @@ def draw_menu(screen):
         mouse_pos   = pygame.mouse.get_pos()
         mouse_click = pygame.mouse.get_pressed()[0]
 
-        title_text = title_font.render("CHOOSE A GAME MODE", True, (80, 84, 24))
-        screen.blit(title_text, ((screen_w - title_text.get_width() - 95) // 2, 60))
+        screen.blit(title_text, rect_title_text)
+        screen.blit(subtitle_text, rect_subtitle_text) 
 
         for btn in buttons:
             rect       = btn["rect"]
@@ -80,7 +103,8 @@ def draw_menu(screen):
             else:
                 color = base_color
 
-            pygame.draw.rect(screen, color, rect, border_radius=10)
+            pygame.draw.rect(screen, tuple(c - 20 for c in color), rect.copy().move(4,4), border_radius=5)
+            pygame.draw.rect(screen, color, rect, border_radius=5)
             screen.blit(btn["icon"], (rect.x + 10, rect.y + 10))
             txt = button_font.render(btn["text"], True, btn_text_color)
             screen.blit(txt, (rect.x + 60, rect.y + (rect.height - txt.get_height()) // 2))
@@ -233,7 +257,7 @@ def result_popup(screen, board):
 def main():
     pygame.init()
     screen = pygame.display.set_mode((screen_w,screen_h), pygame.SCALED)
-    pygame.display.set_caption("Chess Game")
+    pygame.display.set_caption("Pixel Chess Game")
     clock = pygame.time.Clock()
 
     mode = draw_menu(screen)
