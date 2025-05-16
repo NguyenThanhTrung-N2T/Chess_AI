@@ -3,6 +3,17 @@ import os
 import chess  # Thư viện chess để quản lý bàn cờ 
 from AI import ChessAI  # Thư viện AI để xử lý nước đi của máy
 
+pygame.init()
+pygame.mixer.init()
+game_start_sound = pygame.mixer.Sound("sounds/game_start.MP3")
+move_sound = pygame.mixer.Sound("sounds/move.MP3")
+castle_sound = pygame.mixer.Sound("sounds/castle.MP3")
+capture_sound = pygame.mixer.Sound("sounds/capture.MP3")
+check_sound = pygame.mixer.Sound("sounds/check.MP3")
+game_over_sound = pygame.mixer.Sound("sounds/game_over.MP3")
+game_over_stalemate_sound = pygame.mixer.Sound("sounds/game_over_stalemate.MP3")
+click_sound = pygame.mixer.Sound("sounds/click.MP3")
+
 white_cell_color = (255,255,255)
 black_cell_color = (127,164,209)
 selected_square_color = (255, 223, 100)
@@ -155,21 +166,41 @@ class Board:
                 move = chess.Move(from_square, to_square)
 
             if move in self.chess_board.legal_moves:
+                is_capture = False
+                is_castling = False
+                current_move = chess.Move.from_uci(move.uci())
+                if self.chess_board.is_capture(current_move):
+                    is_capture = True
+                elif self.chess_board.is_castling(current_move):
+                    is_castling = True
                 self.move_history.append(move.uci())
                 self.chess_board.push(move)
-
                 if self.chess_board.is_check():
                     king_sq = self.chess_board.king(self.chess_board.turn)
                     row_check = 7 - chess.square_rank(king_sq)
                     col_check = chess.square_file(king_sq)
                     self.king_in_check_square = (row_check, col_check)
                     self.status_message = ">> Your king is in check "
+                    # Check SOUND
+                    check_sound.play()
                 else:
                     self.king_in_check_square = None
                     self.status_message = ""
+                    # Move and capture SOUND    
+                    if is_capture:
+                        capture_sound.play()
+                    elif is_castling:
+                        castle_sound.play()
+                    else:
+                        move_sound.play()
 
                 if self.check_game_end():
                     self.game_over = True
+                    # Game over SOUND
+                    if self.status_message.find("Stalemate") != -1:
+                        game_over_stalemate_sound.play()
+                    else:
+                        game_over_sound.play()
                     return
 
                 # Gọi AI nếu có
@@ -232,6 +263,8 @@ class Board:
         self.king_in_check_square = None
         self.status_message = ""
         self.game_over = False
+        # Game start sound
+        game_start_sound.play()
 
     def undo_move(self):
         if self.move_history:
@@ -248,6 +281,8 @@ class Board:
             else:
                 self.king_in_check_square = None
                 self.status_message = ""
+        # Click SOUND
+        click_sound.play()
         self.game_over = False
 
     def show_promotion_menu(self):

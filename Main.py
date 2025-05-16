@@ -9,7 +9,7 @@ screen_h = 700
 button_text_size = 16
 subtitle_text_size = 18
 title_text_size = 40
-gap_screen_n_title = 50
+gap_screen_n_title = 60
 gap_title_n_subtitle = 70
 gap_btn_n_btn = 30
 title_text_color = (80, 84, 24)
@@ -27,6 +27,7 @@ btn_w = 180
 btn_h = 50
 btn_text_color = (255,255,255)
 
+click_sound = pygame.mixer.Sound("sounds/click.MP3")
 
 def is_hovered(rect, mouse_pos):
     return rect.collidepoint(mouse_pos)
@@ -73,12 +74,15 @@ def draw_menu(screen):
     rect_btn1.top = rect_btn.bottom + gap_btn_n_btn
     rect_btn2.top = rect_btn1.bottom + gap_btn_n_btn
     rect_btn3.top = rect_btn2.bottom + gap_btn_n_btn
-    
+
+    # Sound
+    game_start_sound = pygame.mixer.Sound("sounds/game_start.MP3")
+
     buttons = [
         {"rect": rect_btn, "text": "Player vs Player", "icon": icon_pvp,   "color": (74, 144, 226), "mode": "pvp"},
         {"rect": rect_btn1, "text": "Player vs AI (Easy)", "icon": icon_ai_de, "color": (80, 227, 194), "mode": "easy"},
         {"rect": rect_btn2, "text": "Player vs AI (Normal)", "icon": icon_ai_tb, "color": (245, 166, 35), "mode": "normal"},
-        {"rect": rect_btn3, "text": "Player vs AI (Hard)", "icon": icon_ai_kho, "color": (208, 22, 27), "mode": "hard"},
+        {"rect": rect_btn3, "text": "Player vs AI (Hard)", "icon": icon_ai_kho, "color": (208, 39, 30), "mode": "hard"},
     ]
 
     selected_mode = None
@@ -103,7 +107,7 @@ def draw_menu(screen):
             else:
                 color = base_color
 
-            pygame.draw.rect(screen, tuple(c - 20 for c in color), rect.copy().move(4,4), border_radius=5)
+            pygame.draw.rect(screen, tuple(c - 30 for c in color), rect.copy().move(4,4), border_radius=5)
             pygame.draw.rect(screen, color, rect, border_radius=5)
             screen.blit(btn["icon"], (rect.x + 10, rect.y + 10))
             txt = button_font.render(btn["text"], True, btn_text_color)
@@ -121,6 +125,7 @@ def draw_menu(screen):
                     if btn["rect"].collidepoint(mouse_pos):
                         selected_mode = btn["mode"]
                         running = False
+                        game_start_sound.play()
     return selected_mode
 
 popup_color = (220, 220, 220)
@@ -251,13 +256,18 @@ def result_popup(screen, board):
                     if click:
                         board.reset_game()
                     else:
+                        # Click SOUND
+                        click_sound.play()
                         return True
     return False
 
 def main():
     pygame.init()
+    pygame.mixer.init()
     screen = pygame.display.set_mode((screen_w,screen_h), pygame.SCALED)
+    icon = pygame.image.load("images/w_pawn.png")
     pygame.display.set_caption("Pixel Chess Game")
+    pygame.display.set_icon(icon)
     clock = pygame.time.Clock()
 
     mode = draw_menu(screen)
@@ -345,7 +355,10 @@ def main():
         if board.game_over or back_clicked:
             string = "Well Played"
         txt_turn = font1.render(string, True, btn_color) 
-        screen.blit(txt_turn, txt_turn.get_rect(centerx = btn_undo.centerx, bottom = btn_undo.top - gap_turn_n_btn))
+        rect_txt_turn = txt_turn.get_rect(centerx = btn_undo.centerx, bottom = btn_undo.top - gap_turn_n_btn)
+        if is_hovered(rect_txt_turn, mouse_pos):
+            txt_turn = font1.render(string, True, tuple(c+30 for c in btn_color)) 
+        screen.blit(txt_turn, rect_txt_turn)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -362,6 +375,9 @@ def main():
                 # 1. game_over = true
                 # 2. mouse not in board
                 elif btn_new.collidepoint(mouse_x, mouse_y):
+                    # Click SOUND
+                    click_sound.play()
+
                     mode = draw_menu(screen)
                     back_clicked = False
                     # Reset lại bàn cờ với chế độ mới
