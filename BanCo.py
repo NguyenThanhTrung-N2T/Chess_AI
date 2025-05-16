@@ -23,7 +23,7 @@ class Board:
         self.chess_board = chess.Board()
         self.king_in_check_square = None
         self.move_history = []
-        self.font = pygame.font.Font("fonts/pixelmix.ttf", 15)
+        self.font = pygame.font.Font('fonts/pixelmix.ttf', 15)
         self.status_message = ""
         self.game_over = False
         self.play_with_ai = False
