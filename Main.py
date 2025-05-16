@@ -116,10 +116,14 @@ popup_btn_text_size = 13
 def result_popup(screen, board):
     global popup_y
     speed = 50
-    winner = "w" if not board.chess_board.turn else "b"
+    winner = "b"
+    if board.status_message.startswith("White"):
+        winner = "w"
+    elif board.status_message.startswith("Draw"):
+        winner = "d"
     font = pygame.font.Font("fonts/pixelmix_bold.ttf", button_text_size)
     font2 = pygame.font.Font("fonts/pixelmix_bold.ttf", button_text_size - 3)
-    font3 = pygame.font.Font("fonts/pixelmix_bold.ttf", button_text_size + 5)
+    font3 = pygame.font.Font("fonts/pixelmix_bold.ttf", button_text_size + 6)
     if winner == "b":
         popup_color = (112, 128, 159)
         popup_border_color = (popup_color[0]-20, popup_color[1]-20, popup_color[2]-20)
@@ -139,7 +143,7 @@ def result_popup(screen, board):
     #load
     def render_popup(popup_y, btn_back, btn_playagain):
         text = font.render("END GAME", False, popup_text_color)
-        text1 = font3.render(board.status_message, False, popup_text_color)
+        text1 = font3.render(board.status_message, False, popup_text_color)        
         text_playagain = font2.render("Play again", False, popup_text_color)
         text_back = font2.render("Back", False, popup_text_color)
 
@@ -148,16 +152,26 @@ def result_popup(screen, board):
         rect_text = text.get_rect(centerx = rect_popup.centerx, top = rect_popup.top + gap_popup_n_txt)
         rect_text1 = text1.get_rect(top = rect_text.bottom + gap_popup_n_txt, centerx = rect_popup.centerx)
 
+        if winner == "d":
+            index = board.status_message.find("Draw by")
+            text1 = font3.render("Draw", False, popup_text_color)
+            text2 = font2.render("By", False, popup_text_color)
+            text3 = font2.render(board.status_message[index+8:], False, popup_text_color)
+            rect_text1 = text1.get_rect(top = rect_text.bottom + 5*gap_popup_n_txt, centerx = rect_popup.centerx)
+            rect_text2 = text2.get_rect(top = rect_text1.bottom + gap_popup_n_txt, centerx = rect_popup.centerx)
+            rect_text3 = text3.get_rect(top = rect_text2.bottom + gap_popup_n_txt, centerx = rect_popup.centerx)
+
         btn_playagain.update(0, 0, popup_btn_w, popup_btn_h)
         btn_back.update(0, 0, popup_btn_w, popup_btn_h)
         btn_playagain = btn_playagain.inflate(20, 0)
         btn_playagain.bottom, btn_playagain.left = rect_popup.bottom - gap_popup_n_btn, rect_popup.left + gap_popup_n_btn
         btn_back.bottom, btn_back.right = rect_popup.bottom - gap_popup_n_btn, rect_popup.right - gap_popup_n_btn
         
-        picture = pygame.image.load(f"images/{winner}_king.png").convert_alpha()
-        sze = btn_back.top - rect_text1.bottom - gap_popup_n_btn
-        picture = pygame.transform.scale(picture, (sze,sze))
-        picture_rect = picture.get_rect(centerx = rect_popup.centerx, centery = (btn_back.top + rect_text1.bottom)//2)
+        if winner != "d":
+            picture = pygame.image.load(f"images/{winner}_king.png").convert_alpha()
+            sze = btn_back.top - rect_text1.bottom - gap_popup_n_btn
+            picture = pygame.transform.scale(picture, (sze,sze))
+            picture_rect = picture.get_rect(centerx = rect_popup.centerx, centery = (btn_back.top + rect_text1.bottom)//2)
 
         rect_text_playagain = text_playagain.get_rect(center = btn_playagain.center)
         rect_text_back = text_back.get_rect(center = btn_back.center)
@@ -174,8 +188,12 @@ def result_popup(screen, board):
         screen.blit(text, rect_text)
         screen.blit(text1, rect_text1)
 
-        screen.blit(picture, picture_rect)
-
+        if winner == "d":
+            screen.blit(text2, rect_text2)
+            screen.blit(text3, rect_text3)
+        else:
+            screen.blit(picture, picture_rect)
+        
         draw_button(popup_btn_color, btn_playagain)
         draw_button(popup_btn_color, btn_back)
 

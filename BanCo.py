@@ -91,6 +91,8 @@ class Board:
         if self.status_message:
             msg = self.font.render(self.status_message, True, (255, 0, 0))
             if self.status_message not in ("White wins !", "Black wins !"):
+                if self.status_message.startswith("Draw"):
+                    msg = self.font.render(self.status_message[8:], True, (255, 0, 0))
                 self.screen.blit(msg, msg_pos)
 
     def draw_pieces(self, offset_x, offset_y):
@@ -235,6 +237,7 @@ class Board:
         if self.move_history:
             self.move_history.pop()
             self.chess_board.pop()
+            self.selected_square = None
 
             if self.chess_board.is_check():
                 king_sq = self.chess_board.king(self.chess_board.turn)
