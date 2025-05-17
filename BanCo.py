@@ -5,6 +5,7 @@ from AI import ChessAI  # Thư viện AI để xử lý nước đi của máy
 
 pygame.init()
 pygame.mixer.init()
+
 game_start_sound = pygame.mixer.Sound("sounds/game_start.MP3")
 move_sound = pygame.mixer.Sound("sounds/move.MP3")
 castle_sound = pygame.mixer.Sound("sounds/castle.MP3")
@@ -14,6 +15,7 @@ game_over_sound = pygame.mixer.Sound("sounds/game_over.MP3")
 game_over_stalemate_sound = pygame.mixer.Sound("sounds/game_over_stalemate.MP3")
 click_sound = pygame.mixer.Sound("sounds/click.MP3")
 
+status_msg_font = pygame.font.Font('fonts/pixelmix.ttf', 15)
 white_cell_color = (255,255,255)
 black_cell_color = (127,164,209)
 selected_square_color = (255, 223, 100)
@@ -34,7 +36,6 @@ class Board:
         self.chess_board = chess.Board()
         self.king_in_check_square = None
         self.move_history = []
-        self.font = pygame.font.Font('fonts/pixelmix.ttf', 15)
         self.status_message = ""
         self.game_over = False
         self.play_with_ai = False
@@ -100,10 +101,10 @@ class Board:
             pygame.draw.rect(self.screen, last_move_square_color, from_rect)
             pygame.draw.rect(self.screen, last_move_square_color, to_rect)  
         if self.status_message:
-            msg = self.font.render(self.status_message, True, (255, 0, 0))
+            msg = status_msg_font.render(self.status_message, True, (255, 0, 0))
             if self.status_message not in ("White wins !", "Black wins !"):
                 if self.status_message.startswith("Draw"):
-                    msg = self.font.render(self.status_message[8:], True, (255, 0, 0))
+                    msg = status_msg_font.render(self.status_message[8:], True, (255, 0, 0))
                 self.screen.blit(msg, msg_pos)
 
     def draw_pieces(self, offset_x, offset_y):
@@ -286,6 +287,8 @@ class Board:
         self.game_over = False
 
     def show_promotion_menu(self):
+        pygame.font.init()
+        
         menu_color =  (230, 220, 255)
         menu_border_color = (100, 80, 160)
         menu_btn_color = (140, 120, 200)

@@ -262,6 +262,7 @@ def result_popup(screen, board):
 
 def main():
     pygame.init()
+    pygame.font.init()
     pygame.mixer.init()
     screen = pygame.display.set_mode((screen_w,screen_h), pygame.SCALED)
     icon = pygame.image.load("images/w_pawn.png")
@@ -270,7 +271,11 @@ def main():
     clock = pygame.time.Clock()
 
     mode = draw_menu(screen)
-
+    if mode is None:
+        # User quit early; exit cleanly
+        pygame.quit()
+        return
+    
     font = pygame.font.Font("fonts/pixelmix_bold.ttf", button_text_size)
     font1 = pygame.font.Font("fonts/pixelmix_bold.ttf", button_text_size + 10)
 
