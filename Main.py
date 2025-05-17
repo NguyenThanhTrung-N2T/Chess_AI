@@ -244,7 +244,6 @@ def result_popup(screen, board):
             exit()
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             mouse_x, mouse_y = pygame.mouse.get_pos()
-            print(btn_back, btn_playagain)
             if btn_back and btn_playagain:
                 if btn_back.collidepoint(mouse_x, mouse_y) or btn_playagain.collidepoint(mouse_x, mouse_y):
                     click = True if btn_playagain.collidepoint(mouse_x, mouse_y) else False
