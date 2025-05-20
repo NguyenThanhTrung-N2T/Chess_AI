@@ -206,6 +206,7 @@ class Board:
 
                 # Gọi AI nếu có
                 if self.play_with_ai and self.chess_board.turn == self.ai_player:
+                    pygame.time.delay(5000)  # Delay để người chơi thấy nước đi của mình
                     ai_move = self.ai.select_move(self.chess_board)
 
                     if ai_move and ai_move in self.chess_board.legal_moves:
