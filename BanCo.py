@@ -1,6 +1,10 @@
 import pygame
 import os
-from pyswip import Chess_Law # Thư viện pyswip để xử lý luật cờ vua
+from pyswip import Prolog
+
+prolog = Prolog()
+prolog.consult("Chess_Law.pl")  # Đảm bảo đường dẫn đúng
+
 import chess  # Thư viện chess để quản lý bàn cờ 
 from AI import ChessAI  # Thư viện AI để xử lý nước đi của máy
 
