@@ -1,5 +1,6 @@
 import pygame
 import os
+from pyswip import Chess_Law # Thư viện pyswip để xử lý luật cờ vua
 import chess  # Thư viện chess để quản lý bàn cờ 
 from AI import ChessAI  # Thư viện AI để xử lý nước đi của máy
 
@@ -43,9 +44,11 @@ class Board:
         self.ai_level = 2  # dễ = 1, trung bình = 2, khó = 3
         self.ai = ChessAI(level=self.ai_level)
 
+    # Kiểm tra xem nước đi có phải của quân trắng hay không
     def is_white_turn(self):
         return 1 if self.chess_board.turn == chess.WHITE else 0
 
+    # load ảnh các quân cờ từ thư mục 'images'
     def load_images(self):
         pieces = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king']
         colors = ['w', 'b']
@@ -62,6 +65,7 @@ class Board:
                     print(f"Không tìm thấy hình ảnh: {path}")
         return images
     
+    # Highlight các ô có thể đi được khi chọn quân
     def highlight_squares(self, offset_x, offset_y):
         if self.selected_square is None:
             return
@@ -77,6 +81,7 @@ class Board:
                 rect = pygame.Rect(offset_x + col * self.cell_size, offset_y + row * self.cell_size, self.cell_size, self.cell_size)
                 pygame.draw.rect(self.screen, highlight_square_color, rect, border_thickness)
     
+    # Vẽ bàn cờ và các quân cờ
     def draw_board(self, offset_x, offset_y):
         for row in range(8):
             for col in range(8):
@@ -107,6 +112,7 @@ class Board:
                     msg = status_msg_font.render(self.status_message[8:], True, (255, 0, 0))
                 self.screen.blit(msg, msg_pos)
 
+    # Vẽ các quân cờ trên bàn cờ
     def draw_pieces(self, offset_x, offset_y):
         for row in range(8):
             for col in range(8):
@@ -127,6 +133,7 @@ class Board:
                     if image:
                         self.screen.blit(image, (offset_x + col * self.cell_size, offset_y + row * self.cell_size))
 
+    # Xử lý sự kiện click chuột ( chọn quân cờ và nước đi )
     def handle_click(self, row, col):
         if self.game_over:
             return
@@ -233,11 +240,13 @@ class Board:
 
             self.selected_square = None
 
+    # kiểm tra xem ô được chọn có phải là quân của người chơi hay không
     def is_valid_selection(self, row, col):
         square = chess.square(col, 7 - row)
         piece = self.chess_board.piece_at(square)
         return piece is not None and piece.color == self.chess_board.turn
 
+    # Kiểm tra kết thúc trò chơi
     def check_game_end(self):
         if self.chess_board.is_checkmate():
             winner = "White" if not self.chess_board.turn else "Black"
@@ -257,6 +266,7 @@ class Board:
             return True
         return False
 
+    # Reset game state
     def reset_game(self):
         self.chess_board = chess.Board()
         self.move_history = []
@@ -267,6 +277,7 @@ class Board:
         # Game start sound
         game_start_sound.play()
 
+    # Hoàn tác nước đi
     def undo_move(self):
         if self.move_history:
             self.move_history.pop()
@@ -286,6 +297,7 @@ class Board:
         click_sound.play()
         self.game_over = False
 
+    # Hiển thị menu phong cấp khi người chơi đi quân tốt đến hàng cuối
     def show_promotion_menu(self):
         pygame.font.init()
         
