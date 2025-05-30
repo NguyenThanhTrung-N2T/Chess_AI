@@ -124,3 +124,19 @@ clear_diagonal_step(C, R, C2, R2, ColStep, RowStep) :-
 % lấy dải giá trị giữa 2 số A và B để kiểm tra trống trên hàng, cột , chéo 
 between_min_max(A, B, Min, Max) :-
     (A < B -> Min is A+1, Max is B-1 ; Min is B+1, Max is A-1).
+
+% Gọi được luật đúng quân cờ 
+legal_move(pawn, Color, C1, R1, C2, R2) :-
+    (pawn_move(Color, C1, R1, C2, R2) ; pawn_capture(Color, C1, R1, C2, R2)).
+legal_move(knight, Color, C1, R1, C2, R2) :-
+    knight_move(C1, R1, C2, R2).
+legal_move(bishop, Color, C1, R1, C2, R2) :-
+    bishop_move(C1, R1, C2, R2).
+legal_move(rook, Color, C1, R1, C2, R2) :-
+    rook_move(C1, R1, C2, R2).
+legal_move(queen, Color, C1, R1, C2, R2) :-
+    queen_move(C1, R1, C2, R2).
+legal_move(king, Color, C1, R1, C2, R2) :-
+    king_move(C1, R1, C2, R2).
+
+    
