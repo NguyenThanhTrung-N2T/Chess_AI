@@ -349,20 +349,20 @@ def main():
         #board
         screen.blit(board_border, board_border_rect) 
         board.draw_board(offset_x = offset_x_board, offset_y = offset_y_board) 
-        board.highlight_squares(offset_x = offset_x_board, offset_y = offset_y_board)
+        #board.highlight_squares(offset_x = offset_x_board, offset_y = offset_y_board)
         board.draw_pieces(offset_x = offset_x_piece, offset_y = offset_y_piece)
 
         # Hiển thị thông báo kết quả khi game kết thúc
-        string = "White To Move" if board.is_white_turn() else "Black To Move"
-        if board.game_over:
-            back_clicked = result_popup(screen, board)
-        if board.game_over or back_clicked:
-            string = "Well Played"
-        txt_turn = font1.render(string, True, btn_color) 
-        rect_txt_turn = txt_turn.get_rect(centerx = btn_undo.centerx, bottom = btn_undo.top - gap_turn_n_btn)
-        if is_hovered(rect_txt_turn, mouse_pos):
-            txt_turn = font1.render(string, True, tuple(c+30 for c in btn_color)) 
-        screen.blit(txt_turn, rect_txt_turn)
+        #string = "White To Move" if board.is_white_turn() else "Black To Move"
+        # if board.game_over:
+        #     back_clicked = result_popup(screen, board)
+        # if board.game_over or back_clicked:
+        #     string = "Well Played"
+        # txt_turn = font1.render(string, True, btn_color) 
+        # rect_txt_turn = txt_turn.get_rect(centerx = btn_undo.centerx, bottom = btn_undo.top - gap_turn_n_btn)
+        # if is_hovered(rect_txt_turn, mouse_pos):
+        #     txt_turn = font1.render(string, True, tuple(c+30 for c in btn_color)) 
+        # screen.blit(txt_turn, rect_txt_turn)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
