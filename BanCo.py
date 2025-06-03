@@ -96,6 +96,23 @@ class Board:
                     if image:
                         self.screen.blit(image, (offset_x + col * self.cell_size, offset_y + row * self.cell_size))
 
+    # Phân tích chuỗi quân cờ để lấy loại quân và màu sắc
+    def parse_piece(piece_str):
+        color_code, piece_type = piece_str.split("_")  # e.g. "w_rook" -> ["w", "rook"]
+        color = "white" if color_code == "w" else "black"
+        return piece_type, color
+
+    # khi cần lưu trạng thái bàn cờ vào Prolog
+    # # Sau khi thực hiện nước đi thành công:
+    # assert_board_state(self.board_state)  # assert lại trạng thái mới vào Prolog
+    # list(prolog.query("save_board_state."))  # lưu vào lịch sử Prolog
+
+    # # Khi cần kiểm tra hòa lặp lại 3 lần:
+    # if list(prolog.query("board_repetition(3).")):
+    #     self.status_message = "Draw by Threefold Repetition!"
+
+
+
 
     # # Xử lý sự kiện click chuột ( chọn quân cờ và nước đi )
     # def handle_click(self, row, col):

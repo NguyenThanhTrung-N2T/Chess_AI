@@ -349,6 +349,8 @@ def main():
         #board
         screen.blit(board_border, board_border_rect) 
         board.draw_board(offset_x = offset_x_board, offset_y = offset_y_board) 
+
+        # vẽ viền các ô mà quân cờ có thể di chuyển đến
         #board.highlight_squares(offset_x = offset_x_board, offset_y = offset_y_board)
         board.draw_pieces(offset_x = offset_x_piece, offset_y = offset_y_piece)
 
