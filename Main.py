@@ -366,6 +366,9 @@ def main():
         #     txt_turn = font1.render(string, True, tuple(c+30 for c in btn_color)) 
         # screen.blit(txt_turn, rect_txt_turn)
 
+
+
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -376,7 +379,9 @@ def main():
                 if back_clicked == False and board.game_over == False and mouse_in_board(mouse_x, mouse_y):
                     row = (mouse_y - offset_y_board) // board.cell_size
                     col = (mouse_x - offset_x_board) // board.cell_size
-                    board.handle_click(row, col)
+                    row_prolog = 8 - row  # Chuyển đổi từ hệ tọa độ của pygame sang hệ tọa độ của Prolog
+                    col_prolog = col + 1  # Chuyển đổi từ hệ tọa độ của pygame sang hệ tọa độ của Prolog
+                    board.handle_click(row_prolog, col_prolog)
                 # Xử lý sự kiện nhấn nút
                 # 1. game_over = true
                 # 2. mouse not in board
