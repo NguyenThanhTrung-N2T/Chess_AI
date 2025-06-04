@@ -358,3 +358,11 @@ fifty_move_rule :- fifty_move_counter(N), N >= 100.
 reset_fifty_move_counter :-
     retractall(fifty_move_counter(_)),
     assertz(fifty_move_counter(0)).
+
+
+% Liệt kê tất cả nước đi hợp lệ cho quân ở (C, R)
+all_legal_moves(Color, C, R, Moves) :-
+    piece_at(C, R, Color, Piece),
+    findall((C2, R2),
+        legal_move_safe(Piece, Color, C, R, C2, R2),
+        Moves).
