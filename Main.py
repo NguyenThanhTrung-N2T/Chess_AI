@@ -351,7 +351,7 @@ def main():
         board.draw_board(offset_x = offset_x_board, offset_y = offset_y_board) 
 
         # vẽ viền các ô mà quân cờ có thể di chuyển đến
-        #board.highlight_squares(offset_x = offset_x_board, offset_y = offset_y_board)
+        # board.highlight_squares(offset_x = offset_x_board, offset_y = offset_y_board)
         board.draw_pieces(offset_x = offset_x_piece, offset_y = offset_y_piece)
 
         # Hiển thị thông báo kết quả khi game kết thúc

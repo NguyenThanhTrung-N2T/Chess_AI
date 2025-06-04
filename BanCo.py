@@ -97,10 +97,64 @@ class Board:
                         self.screen.blit(image, (offset_x + col * self.cell_size, offset_y + row * self.cell_size))
 
     # Phân tích chuỗi quân cờ để lấy loại quân và màu sắc
-    def parse_piece(piece_str):
-        color_code, piece_type = piece_str.split("_")  # e.g. "w_rook" -> ["w", "rook"]
+    def parse_piece(self, piece_str):
+        color_code, piece_type = piece_str.split("_")  # e  .g. "w_rook" -> ["w", "rook"]
         color = "white" if color_code == "w" else "black"
         return piece_type, color
+
+    # def highlight_squares(self, offset_x=0, offset_y=0):
+    #     if self.selected_square is not None:
+    #         row, col = self.selected_square
+    #         piece = self.board_state[row][col]
+    #         if piece:
+    #             piece_type, color = self.parse_piece(piece)
+    #             # Chuyển đổi sang tọa độ Prolog
+    #             prolog_row = 8 - row
+    #             prolog_col = col + 1
+    #             # Gọi Prolog lấy các nước đi hợp lệ
+    #             query = f"all_legal_moves('{color}', {prolog_col}, {prolog_row}, Moves)"
+    #             result = list(prolog.query(query))
+    #             moves = []
+    #             if result:
+    #                 moves = result[0]['Moves']
+    #             print("Highlight moves:", moves)
+    #             # Vẽ viền các ô hợp lệ
+    #             for (c2, r2) in moves:
+    #                 py_row = 8 - r2
+    #                 py_col = c2 - 1
+    #                 rect = pygame.Rect(offset_x + py_col * self.cell_size, offset_y + py_row * self.cell_size, self.cell_size, self.cell_size)
+    #                 pygame.draw.rect(self.screen, highlight_square_color, rect, border_thickness)
+
+    def is_player_piece(self, piece):
+        # piece: 'w_pawn', 'b_queen', ...
+        return piece.startswith(self.turn + "_")
+
+    def current_color(self):
+        return "white" if self.turn == "w" else "black"
+    
+    def switch_turn(self):
+        self.turn = "b" if self.turn == "w" else "w"
+        self.status_message = f"Turn: {'White' if self.turn == 'w' else 'Black'}"
+
+    def handle_click(self, row_prolog, col_prolog):
+        # Chuyển đổi về chỉ số Pygame
+        row = 8 - row_prolog
+        col = col_prolog - 1
+
+        if self.selected_square is None:
+            # Chọn quân
+            piece = self.board_state[row][col]
+            if piece and self.is_player_piece(piece):
+                self.selected_square = (row, col)
+        else:
+            # Đã chọn quân, giờ chọn ô đích
+            from_row, from_col = self.selected_square
+            # Di chuyển quân trên bàn cờ Python
+            self.board_state[row][col] = self.board_state[from_row][from_col]
+            self.board_state[from_row][from_col] = None
+            self.selected_square = None
+            # Đổi lượt chơi
+            self.switch_turn()
 
     # khi cần lưu trạng thái bàn cờ vào Prolog
     # # Sau khi thực hiện nước đi thành công:
