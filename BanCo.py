@@ -38,6 +38,13 @@ class Board:
         
         # ➕ Các thuộc tính mới để tự quản lý bàn cờ
         self.board_state = self.init_board_state()  # Trạng thái bàn cờ 8x8
+        self.assert_board_state()  # Assert trạng thái ban đầu vào Prolog
+        print("Các quân cờ hiện tại từ Prolog:")
+        try:
+            for sol in prolog.query("piece_at(C, R, Color, Piece)"):
+                print(sol)
+        except Exception as e:
+            print(f"Lỗi khi truy vấn piece_at: {e}")
         self.selected_square = None
         self.move_history = []
         self.turn = "w"
@@ -125,36 +132,83 @@ class Board:
     #                 rect = pygame.Rect(offset_x + py_col * self.cell_size, offset_y + py_row * self.cell_size, self.cell_size, self.cell_size)
     #                 pygame.draw.rect(self.screen, highlight_square_color, rect, border_thickness)
 
+    # Kiểm tra xem quân cờ có phải là quân của người chơi hiện tại hay không
     def is_player_piece(self, piece):
         # piece: 'w_pawn', 'b_queen', ...
         return piece.startswith(self.turn + "_")
 
+    # Trả về màu sắc hiện tại của người chơi
     def current_color(self):
         return "white" if self.turn == "w" else "black"
     
+    # Chuyển đổi lượt chơi
     def switch_turn(self):
         self.turn = "b" if self.turn == "w" else "w"
         self.status_message = f"Turn: {'White' if self.turn == 'w' else 'Black'}"
 
+    def assert_board_state(self):
+        # Xóa hết các fact piece_at/4 trong Prolog
+        list(prolog.query("retractall(piece_at(_,_,_,_))"))
+        # Chỉ assert các ô có quân cờ
+        for row in range(8):
+            for col in range(8):
+                piece = self.board_state[row][col]
+                if piece:  # Chỉ khi có quân cờ
+                    piece_type, color = self.parse_piece(piece)
+                    color_atom = "white" if color == "white" else "black"
+                    prolog_row = 8 - row
+                    prolog_col = col + 1
+                    query = f"assertz(piece_at({prolog_col}, {prolog_row}, {color_atom}, {piece_type}))"
+                    list(prolog.query(query))
+
+
     def handle_click(self, row_prolog, col_prolog):
-        # Chuyển đổi về chỉ số Pygame
         row = 8 - row_prolog
         col = col_prolog - 1
 
         if self.selected_square is None:
-            # Chọn quân
             piece = self.board_state[row][col]
             if piece and self.is_player_piece(piece):
                 self.selected_square = (row, col)
         else:
-            # Đã chọn quân, giờ chọn ô đích
             from_row, from_col = self.selected_square
-            # Di chuyển quân trên bàn cờ Python
-            self.board_state[row][col] = self.board_state[from_row][from_col]
-            self.board_state[from_row][from_col] = None
+            from_row_prolog = 8 - from_row
+            from_col_prolog = from_col + 1
+            color = self.current_color()
+            piece = self.board_state[from_row][from_col]
+            if not piece:
+                self.selected_square = None
+                return
+            piece_type, _ = self.parse_piece(piece)  # Lấy loại quân (pawn, knight, ...)
+            
+            # Cập nhật trạng thái bàn cờ cho Prolog trước khi kiểm tra nước đi
+            self.assert_board_state()
+            
+            # Gọi move_piece tổng quát
+            query = f"move_piece({piece_type}, {color}, {from_col_prolog}, {from_row_prolog}, {col_prolog}, {row_prolog})"
+            result = list(prolog.query(query))
+            print(f"Query: {query} -> Result: {result}")
+            
+            if result:
+                # Nếu hợp lệ, cập nhật bàn cờ Python
+                captured_piece = self.board_state[row][col]
+                self.board_state[row][col] = self.board_state[from_row][from_col]
+                self.board_state[from_row][from_col] = None
+
+                # Cập nhật lại trạng thái cho Prolog sau khi đi quân
+                self.assert_board_state()
+                self.switch_turn()
+
+                # Phát âm thanh phù hợp
+                if captured_piece:
+                    capture_sound.play()
+                else:
+                    move_sound.play()
+            else:
+                self.status_message = "Invalid move!"
+                
             self.selected_square = None
-            # Đổi lượt chơi
-            self.switch_turn()
+
 
     # khi cần lưu trạng thái bàn cờ vào Prolog
     # # Sau khi thực hiện nước đi thành công:

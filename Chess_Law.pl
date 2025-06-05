@@ -2,10 +2,9 @@
 
 % --- Khai báo dynamic ---
 :- dynamic piece_at/4.
-:- dynamic board_history/1.
-:- dynamic moved/3. % moved(Color, Piece, Col) % Lưu trạng thái quân đã di chuyển
-:- dynamic last_move/4. % Lưu nước đi cuối cùng để bắt tốt en passant
-last_move(_,_,_,_).
+%:- dynamic board_history/1.
+%:- dynamic moved/3. % moved(Color, Piece, Col) % Lưu trạng thái quân đã di chuyển
+%:- dynamic last_move/4. % Lưu nước đi cuối cùng để bắt tốt en passant
 
 % --- Hàm hỗ trợ ---
 abs(X, Y) :- X >= 0, Y is X; X < 0, Y is -X.
@@ -144,55 +143,67 @@ legal_move(king, Color, C1, R1, C2, R2) :-
     king_move(C1, R1, C2, R2),
     not_same_color(C2, R2, Color).
 
+% --- Kiểm tra không có quân cờ khác cùng màu ở vị trí (C2, R2) ---
 not_same_color(C2, R2, Color) :-
     (\+ piece_at(C2, R2, _, _));
     (piece_at(C2, R2, OtherColor, _), OtherColor \= Color).
 
-% --- Lưu & kiểm tra lịch sử bàn cờ ---
-board_history([]).
-% --- Lưu trạng thái bàn cờ ---
-save_board_state :-
-    findall(piece_at(C, R, Color, Piece), piece_at(C, R, Color, Piece), CurrentState),
-    retract(board_history(History)),
-    NewHistory = [CurrentState | History],
-    assertz(board_history(NewHistory)).
-% --- Xóa lịch sử bàn cờ ---
-clear_board_history :-
-    retractall(board_history(_)),
-    assertz(board_history([])).
-
-% --- Undo ---
-undo_move :-
-    board_history([_Current | RestHistory]),
-    retractall(piece_at(_, _, _, _)),
-    ( RestHistory = [PreviousState | _] ->
-        forall(member(piece_at(C, R, Color, Piece), PreviousState),
-               assertz(piece_at(C, R, Color, Piece)))
-    ; true ),
-    retract(board_history(_)),
-    assertz(board_history(RestHistory)).
-
-% --- Hàm di chuyển quân có lưu trạng thái ---
-move(Color, C1, R1, C2, R2) :-
-    piece_at(C1, R1, Color, Piece),
-    (piece_at(C2, R2, OtherColor, _) -> WasCapture = true ; WasCapture = false),
-    legal_move_safe(Piece, Color, C1, R1, C2, R2),
-    save_board_state,
+% --- Hàm di chuyển quân cờ ---
+% Di chuyển quân cờ từ (C1, R1) đến (C2, R2) nếu nước đi hợp lệ
+move_piece(Piece, Color, C1, R1, C2, R2) :-
+    legal_move(Piece, Color, C1, R1, C2, R2),
+    % Thực hiện tạm nước đi
     retract(piece_at(C1, R1, Color, Piece)),
-    (   Piece = pawn,
-        en_passant(Color, C1, R1, C2, R2)
-    ->  pawn_dir(Color, Dir, _),
-        RowPawn is R2 - Dir,
-        retract(piece_at(C2, RowPawn, _, pawn))
-    ;   true
-    ),
     (retract(piece_at(C2, R2, _, _)); true),
     assertz(piece_at(C2, R2, Color, Piece)),
-    retractall(last_move(_,_,_,_)),
-    assertz(last_move(C1, R1, C2, R2)),
-    update_fifty_move_counter(Piece, WasCapture),
-    (Piece = king -> assertz(moved(Color, king, C1)) ; true),
-    (Piece = rook, (C1 =:= 1 ; C1 =:= 8) -> assertz(moved(Color, rook, C1)) ; true).
+    % Kiểm tra vua không bị chiếu
+    (\+ in_check(Color)), 
+    !.
+% % --- Lưu & kiểm tra lịch sử bàn cờ ---
+% board_history([]).
+% % --- Lưu trạng thái bàn cờ ---
+% save_board_state :-
+%     findall(piece_at(C, R, Color, Piece), piece_at(C, R, Color, Piece), CurrentState),
+%     retract(board_history(History)),
+%     NewHistory = [CurrentState | History],
+%     assertz(board_history(NewHistory)).
+% % --- Xóa lịch sử bàn cờ ---
+% clear_board_history :-
+%     retractall(board_history(_)),
+%     assertz(board_history([])).
+
+% % --- Undo ---
+% undo_move :-
+%     board_history([_Current | RestHistory]),
+%     retractall(piece_at(_, _, _, _)),
+%     ( RestHistory = [PreviousState | _] ->
+%         forall(member(piece_at(C, R, Color, Piece), PreviousState),
+%                assertz(piece_at(C, R, Color, Piece)))
+%     ; true ),
+%     retract(board_history(_)),
+%     assertz(board_history(RestHistory)).
+
+% % --- Hàm di chuyển quân có lưu trạng thái ---
+% move(Color, C1, R1, C2, R2) :-
+%     piece_at(C1, R1, Color, Piece),
+%     (piece_at(C2, R2, OtherColor, _) -> WasCapture = true ; WasCapture = false),
+%     legal_move_safe(Piece, Color, C1, R1, C2, R2),
+%     save_board_state,
+%     retract(piece_at(C1, R1, Color, Piece)),
+%     (   Piece = pawn,
+%         en_passant(Color, C1, R1, C2, R2)
+%     ->  pawn_dir(Color, Dir, _),
+%         RowPawn is R2 - Dir,
+%         retract(piece_at(C2, RowPawn, _, pawn))
+%     ;   true
+%     ),
+%     (retract(piece_at(C2, R2, _, _)); true),
+%     assertz(piece_at(C2, R2, Color, Piece)),
+%     retractall(last_move(_,_,_,_)),
+%     assertz(last_move(C1, R1, C2, R2)),
+%     update_fifty_move_counter(Piece, WasCapture),
+%     (Piece = king -> assertz(moved(Color, king, C1)) ; true),
+%     (Piece = rook, (C1 =:= 1 ; C1 =:= 8) -> assertz(moved(Color, rook, C1)) ; true).
 
 % Tìm vị trí vua của màu Color
 king_position(Color, Col, Row) :-
