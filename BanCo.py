@@ -184,14 +184,26 @@ class Board:
             # Cập nhật trạng thái bàn cờ cho Prolog trước khi kiểm tra nước đi
             self.assert_board_state()
             
+            # --- Thêm đoạn này để debug last_move ---
+            print("Trạng thái last_move trong Prolog:")
+            for sol in prolog.query("last_move(C1, R1, C2, R2)"):
+                print(sol)
+
             # Gọi move_piece tổng quát
             query = f"move_piece({piece_type}, {color}, {from_col_prolog}, {from_row_prolog}, {col_prolog}, {row_prolog})"
             result = list(prolog.query(query))
             print(f"Query: {query} -> Result: {result}")
             
             if result:
-                # Nếu hợp lệ, cập nhật bàn cờ Python
                 captured_piece = self.board_state[row][col]
+                # --- Xử lý en passant ---
+                if piece_type == "pawn" and captured_piece is None and from_col != col:
+                    # Xác định hướng di chuyển của tốt
+                    direction = 1 if color == "white" else -1
+                    captured_row = row - (-direction)  # Hàng của tốt bị bắt
+
+                    self.board_state[captured_row][col] = None  # Xóa tốt đối phương
+                # --- Cập nhật bàn cờ ---
                 self.board_state[row][col] = self.board_state[from_row][from_col]
                 self.board_state[from_row][from_col] = None
 
@@ -200,13 +212,13 @@ class Board:
                 self.switch_turn()
 
                 # Phát âm thanh phù hợp
-                if captured_piece:
+                if captured_piece or (piece_type == "pawn" and from_col != col):
                     capture_sound.play()
                 else:
                     move_sound.play()
             else:
                 self.status_message = "Invalid move!"
-                
+
             self.selected_square = None
 
 

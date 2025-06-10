@@ -3,6 +3,9 @@
 % --- Khai báo dynamic ---
 :- consult('Chess_Helper.pl').
 :- dynamic piece_at/4.
+:- dynamic last_move/4.
+
+last_move(0,0,0,0). % Fact để lưu nước đi cuối cùng dùng trong en_passant
 
 % --- Pawn ---
 pawn_dir(white, 1, 2).
@@ -38,7 +41,7 @@ en_passant(Color, Col1, Row1, Col2, Row2) :-
     Color \= OtherColor,
     last_move(Col2, Row3, Col2, Row1),
     pawn_dir(OtherColor, OtherDir, _),
-    Row3 =:= Row1 + 2*OtherDir,
+    Row3 =:= Row1 - 2*OtherDir,
     \+ piece_at(Col2, Row2, _, _).
 
 % --- Knight ---
@@ -106,7 +109,15 @@ legal_move(king, Color, C1, R1, C2, R2) :-
 move_piece(Piece, Color, C1, R1, C2, R2) :-
     legal_move(Piece, Color, C1, R1, C2, R2),
     retract(piece_at(C1, R1, Color, Piece)),
-    (retract(piece_at(C2, R2, _, _)); true),
+    (   Piece = pawn,
+        en_passant(Color, C1, R1, C2, R2)
+    ->  pawn_dir(Color, Dir, _),
+        RowPawn is R2 - Dir,
+        retract(piece_at(C2, RowPawn, _, pawn))
+    ;   retract(piece_at(C2, R2, _, _)); true
+    ),
     assertz(piece_at(C2, R2, Color, Piece)),
-    (\+ in_check(Color)), 
+    (\+ in_check(Color)),
+    retractall(last_move(_,_,_,_)),
+    assertz(last_move(C1, R1, C2, R2)),
     !.
