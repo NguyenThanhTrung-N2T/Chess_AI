@@ -194,48 +194,22 @@ class Board:
             result = list(prolog.query(query))
             print(f"Query: {query} -> Result: {result}")
             
-            # Sau khi result = list(prolog.query(query))
             if result:
-                # Nhận diện nhập thành
-                if piece_type == "king" and abs(from_col - col) == 2:
-                    # Nhập thành kingside
-                    if col > from_col:
-                        # Trắng: e1->g1 (from_row==7, from_col==4, row==7, col==6)
-                        # Đen:   e8->g8 (from_row==0, from_col==4, row==0, col==6)
-                        self.board_state[row][col] = self.board_state[from_row][from_col]  # Di chuyển vua
-                        self.board_state[from_row][from_col] = None
-                        self.board_state[row][col-1] = self.board_state[row][7]  # Di chuyển xe
-                        self.board_state[row][7] = None
-                    # Nhập thành queenside
-                    else:
-                        # Trắng: e1->c1 (from_row==7, from_col==4, row==7, col==2)
-                        # Đen:   e8->c8 (from_row==0, from_col==4, row==0, col==2)
-                        self.board_state[row][col] = self.board_state[from_row][from_col]  # Di chuyển vua
-                        self.board_state[from_row][from_col] = None
-                        self.board_state[row][col+1] = self.board_state[row][0]  # Di chuyển xe
-                        self.board_state[row][0] = None
-                else:
-                    # Xử lý các nước đi bình thường và en passant như cũ
-                    captured_piece = self.board_state[row][col]
-                    if piece_type == "pawn" and captured_piece is None and from_col != col:
-                        direction = 1 if color == "white" else -1
-                        captured_row = row - (-direction)
-                        self.board_state[captured_row][col] = None
-                    self.board_state[row][col] = self.board_state[from_row][from_col]
-                    self.board_state[from_row][from_col] = None
+                captured_piece = self.board_state[row][col]
+                # --- Xử lý en passant ---
+                if piece_type == "pawn" and captured_piece is None and from_col != col:
+                    # Xác định hướng di chuyển của tốt
+                    direction = 1 if color == "white" else -1
+                    captured_row = row - (-direction)  # Hàng của tốt bị bắt
+
+                    self.board_state[captured_row][col] = None  # Xóa tốt đối phương
+                # --- Cập nhật bàn cờ ---
+                self.board_state[row][col] = self.board_state[from_row][from_col]
+                self.board_state[from_row][from_col] = None
 
                 # Cập nhật lại trạng thái cho Prolog sau khi đi quân
                 self.assert_board_state()
                 self.switch_turn()
-
-                # In ra các quân cờ hiện tại từ Prolog sau khi đi quân
-                print("Các quân cờ hiện tại từ Prolog sau khi đi quân:")
-                # --- Thêm đoạn này để debug piece_at ---
-                try:
-                    for sol in prolog.query("piece_at(C, R, Color, Piece)"):
-                        print(sol)
-                except Exception as e:
-                    print(f"Lỗi khi truy vấn piece_at: {e}")
 
                 # Phát âm thanh phù hợp
                 if captured_piece or (piece_type == "pawn" and from_col != col):

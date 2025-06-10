@@ -69,10 +69,10 @@ rook_move(C1, R1, C2, R2) :-
     clear_straight(C1, R1, C2, R2),
     (\+ piece_at(C2, R2, _, _) ; (piece_at(C2, R2, Color2, _), piece_at(C1, R1, Color1, rook), Color1 \= Color2)).
 
-% --- Queen chỉ kiểm tra đường đi ---
+% --- Queen ---
 queen_move(C1, R1, C2, R2) :-
-    bishop_move_path(C1, R1, C2, R2);
-    rook_move_path(C1, R1, C2, R2).
+    (bishop_move(C1, R1, C2, R2);
+     rook_move(C1, R1, C2, R2)).
 
 % --- King ---
 king_move(C1, R1, C2, R2) :-
@@ -105,69 +105,16 @@ legal_move(king, Color, C1, R1, C2, R2) :-
     king_move(C1, R1, C2, R2),
     not_same_color(C2, R2, Color).
 
-
-% --- Thay đổi thứ tự các luật move_piece, đặt nhập thành lên trước ---
-% --- Di chuyển nhập thành kingside ---
-move_piece(king, Color, 5, Row, 7, Row) :-
-    castle_kingside(Color),
-    retract(piece_at(5, Row, Color, king)),
-    retract(piece_at(8, Row, Color, rook)),
-    assertz(piece_at(7, Row, Color, king)),
-    assertz(piece_at(6, Row, Color, rook)),
-    assertz(has_moved(Color, king)),
-    assertz(has_moved(Color, rook, 8, Row)),
-    retractall(last_move(_,_,_,_)),
-    assertz(last_move(5, Row, 7, Row)),
-    !.
-
-% --- Di chuyển nhập thành queenside ---
-move_piece(king, Color, 5, Row, 3, Row) :-
-    castle_queenside(Color),
-    retract(piece_at(5, Row, Color, king)),
-    retract(piece_at(1, Row, Color, rook)),
-    assertz(piece_at(3, Row, Color, king)),
-    assertz(piece_at(4, Row, Color, rook)),
-    assertz(has_moved(Color, king)),
-    assertz(has_moved(Color, rook, 1, Row)),
-    retractall(last_move(_,_,_,_)),
-    assertz(last_move(5, Row, 3, Row)),
-    !.
-
-% --- Di chuyển vua bình thường ---
-move_piece(king, Color, C1, R1, C2, R2) :-
-    legal_move(king, Color, C1, R1, C2, R2),
-    retract(piece_at(C1, R1, Color, king)),
-    (retract(piece_at(C2, R2, _, _)); true),
-    assertz(piece_at(C2, R2, Color, king)),
-    assertz(has_moved(Color, king)),
-    retractall(last_move(_,_,_,_)),
-    assertz(last_move(C1, R1, C2, R2)),
-    !.
-
-% --- Di chuyển xe bình thường ---
-move_piece(rook, Color, C1, R1, C2, R2) :-
-    legal_move(rook, Color, C1, R1, C2, R2),
-    retract(piece_at(C1, R1, Color, rook)),
-    (retract(piece_at(C2, R2, _, _)); true),
-    assertz(piece_at(C2, R2, Color, rook)),
-    assertz(has_moved(Color, rook, C1, R1)),
-    retractall(last_move(_,_,_,_)),
-    assertz(last_move(C1, R1, C2, R2)),
-    !.
-
-
 % --- Hàm di chuyển quân cờ tổng quát ---
 move_piece(Piece, Color, C1, R1, C2, R2) :-
     legal_move(Piece, Color, C1, R1, C2, R2),
     retract(piece_at(C1, R1, Color, Piece)),
-    (   % Nếu là en passant
-        (Piece = pawn, en_passant(Color, C1, R1, C2, R2))
-    ->  % Xóa tốt bị bắt qua đường
-        pawn_dir(Color, Dir, _),
+    (   Piece = pawn,
+        en_passant(Color, C1, R1, C2, R2)
+    ->  pawn_dir(Color, Dir, _),
         RowPawn is R2 - Dir,
         retract(piece_at(C2, RowPawn, _, pawn))
-    ;   % Nếu không phải en passant, xử lý bình thường
-        (retract(piece_at(C2, R2, _, _)); true)
+    ;   retract(piece_at(C2, R2, _, _)); true
     ),
     assertz(piece_at(C2, R2, Color, Piece)),
     (\+ in_check(Color)),
