@@ -35,6 +35,21 @@ clear_diagonal_step(C, R, C2, R2, ColStep, RowStep) :-
         clear_diagonal_step(C1, R1, C2, R2, ColStep, RowStep)
     ).
 
+% --- Bishop chỉ kiểm tra đường đi ---
+bishop_move_path(C1, R1, C2, R2) :-
+    abs(C1 - C2) =:= abs(R1 - R2),
+    C1 \= C2,
+    C2 >= 1, C2 =< 8, R2 >= 1, R2 =< 8,
+    clear_diagonal(C1, R1, C2, R2).
+
+% --- Rook chỉ kiểm tra đường đi ---
+rook_move_path(C1, R1, C2, R2) :-
+    (C1 =:= C2; R1 =:= R2),
+    (C1 \= C2; R1 \= R2),
+    C2 >= 1, C2 =< 8, R2 >= 1, R2 =< 8,
+    clear_straight(C1, R1, C2, R2).
+
+
 % --- Kiểm tra không ăn cùng màu ---
 not_same_color(C2, R2, Color) :-
     (\+ piece_at(C2, R2, _, _));

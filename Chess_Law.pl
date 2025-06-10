@@ -71,8 +71,8 @@ rook_move(C1, R1, C2, R2) :-
 
 % --- Queen ---
 queen_move(C1, R1, C2, R2) :-
-    (bishop_move(C1, R1, C2, R2);
-     rook_move(C1, R1, C2, R2)).
+    bishop_move_path(C1, R1, C2, R2);
+    rook_move_path(C1, R1, C2, R2).
 
 % --- King ---
 king_move(C1, R1, C2, R2) :-
@@ -109,12 +109,14 @@ legal_move(king, Color, C1, R1, C2, R2) :-
 move_piece(Piece, Color, C1, R1, C2, R2) :-
     legal_move(Piece, Color, C1, R1, C2, R2),
     retract(piece_at(C1, R1, Color, Piece)),
-    (   Piece = pawn,
-        en_passant(Color, C1, R1, C2, R2)
-    ->  pawn_dir(Color, Dir, _),
+    (   % Nếu là en passant
+        (Piece = pawn, en_passant(Color, C1, R1, C2, R2))
+    ->  % Xóa tốt bị bắt qua đường
+        pawn_dir(Color, Dir, _),
         RowPawn is R2 - Dir,
         retract(piece_at(C2, RowPawn, _, pawn))
-    ;   retract(piece_at(C2, R2, _, _)); true
+    ;   % Nếu không phải en passant, xử lý bình thường
+        (retract(piece_at(C2, R2, _, _)); true)
     ),
     assertz(piece_at(C2, R2, Color, Piece)),
     (\+ in_check(Color)),
