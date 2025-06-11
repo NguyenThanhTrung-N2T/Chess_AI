@@ -35,6 +35,7 @@ class Board:
         self.cell_size = size
         self.colors = [white_cell_color, black_cell_color]
         self.images = self.load_images()
+        self.in_check_square = None  # Vị trí vua đang bị chiếu
         
         # ➕ Các thuộc tính mới để tự quản lý bàn cờ
         self.board_state = self.init_board_state()  # Trạng thái bàn cờ 8x8
@@ -87,13 +88,18 @@ class Board:
                 rect = pygame.Rect(offset_x + col * self.cell_size, offset_y + row * self.cell_size, self.cell_size, self.cell_size)
                 pygame.draw.rect(self.screen, color, rect)
 
-                if self.selected_square == (row, col):
+                # Nếu là ô vua đang bị chiếu -> vẽ viền đỏ
+                if self.in_check_square == (row, col):
+                    pygame.draw.rect(self.screen, (255, 0, 0), rect, border_thickness)
+
+                # Nếu là ô đang được chọn -> vẽ viền màu khác
+                elif self.selected_square == (row, col):
                     pygame.draw.rect(self.screen, selected_square_color, rect, border_thickness)
 
+        # Vẽ thông báo trạng thái
         if self.status_message:
             msg = status_msg_font.render(self.status_message, True, (255, 0, 0))
             self.screen.blit(msg, msg_pos)
-
     def draw_pieces(self, offset_x, offset_y):
         for row in range(8):
             for col in range(8):
@@ -163,6 +169,9 @@ class Board:
 
 
     def handle_click(self, row_prolog, col_prolog):
+        if self.game_over:
+            return  # Nếu game kết thúc thì không cho đi tiếp
+
         row = 8 - row_prolog
         col = col_prolog - 1
 
@@ -179,39 +188,70 @@ class Board:
             if not piece:
                 self.selected_square = None
                 return
-            piece_type, _ = self.parse_piece(piece)  # Lấy loại quân (pawn, knight, ...)
-            
-            # Cập nhật trạng thái bàn cờ cho Prolog trước khi kiểm tra nước đi
+            piece_type, _ = self.parse_piece(piece)
+
             self.assert_board_state()
-            
-            # --- Thêm đoạn này để debug last_move ---
+
             print("Trạng thái last_move trong Prolog:")
             for sol in prolog.query("last_move(C1, R1, C2, R2)"):
                 print(sol)
 
-            # Gọi move_piece tổng quát
             query = f"move_piece({piece_type}, {color}, {from_col_prolog}, {from_row_prolog}, {col_prolog}, {row_prolog})"
             result = list(prolog.query(query))
             print(f"Query: {query} -> Result: {result}")
-            
+
             if result:
                 captured_piece = self.board_state[row][col]
-                # --- Xử lý en passant ---
-                if piece_type == "pawn" and captured_piece is None and from_col != col:
-                    # Xác định hướng di chuyển của tốt
-                    direction = 1 if color == "white" else -1
-                    captured_row = row - (-direction)  # Hàng của tốt bị bắt
 
-                    self.board_state[captured_row][col] = None  # Xóa tốt đối phương
-                # --- Cập nhật bàn cờ ---
+                if piece_type == "pawn" and captured_piece is None and from_col != col:
+                    direction = 1 if color == "white" else -1
+                    captured_row = row - (-direction)
+                    self.board_state[captured_row][col] = None
+
                 self.board_state[row][col] = self.board_state[from_row][from_col]
                 self.board_state[from_row][from_col] = None
 
-                # Cập nhật lại trạng thái cho Prolog sau khi đi quân
                 self.assert_board_state()
+
+                # Kiểm tra các trạng thái đặc biệt sau khi đi quân
+                enemy_color = "black" if self.turn == "w" else "white"
+                
+                # Checkmate
+                checkmate_query = f"checkmate({enemy_color})"
+                if list(prolog.query(checkmate_query)):
+                    self.status_message = f"Checkmate! {color.capitalize()} wins!"
+                    game_over_sound.play()
+                    self.game_over = True
+                    return
+
+                # Stalemate
+                stalemate_query = f"stalemate({enemy_color})"
+                if list(prolog.query(stalemate_query)):
+                    self.status_message = "Stalemate! It's a draw!"
+                    game_over_stalemate_sound.play()
+                    self.game_over = True
+                    return
+
+                # Check
+                check_query = f"in_check({enemy_color})"
+                print(f"Check query: {check_query}")
+                if list(prolog.query(check_query)):
+                    self.status_message = f"{enemy_color.capitalize()} is in check!"
+                    check_sound.play()
+
+                    # Tìm vị trí quân vua đối thủ
+                    for row in range(8):
+                        for col in range(8):
+                            piece = self.board_state[row][col]
+                            if piece and self.is_enemy_king(piece, enemy_color):
+                                self.in_check_square = (row, col)
+                                break
+                else:
+                    self.status_message = ""
+                    self.in_check_square = None  # Nếu không bị chiếu thì xóa viền
+
                 self.switch_turn()
 
-                # Phát âm thanh phù hợp
                 if captured_piece or (piece_type == "pawn" and from_col != col):
                     capture_sound.play()
                 else:
@@ -221,6 +261,10 @@ class Board:
 
             self.selected_square = None
 
+    # Kiểm tra xem quân cờ có phải là quân vua của đối thủ hay không
+    def is_enemy_king(self, piece, enemy_color):
+        piece_type, color = self.parse_piece(piece)
+        return piece_type == "king" and color == enemy_color
 
     # khi cần lưu trạng thái bàn cờ vào Prolog
     # # Sau khi thực hiện nước đi thành công:

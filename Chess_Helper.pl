@@ -55,17 +55,4 @@ not_same_color(C2, R2, Color) :-
     (\+ piece_at(C2, R2, _, _));
     (piece_at(C2, R2, OtherColor, _), OtherColor \= Color).
 
-% --- Kiểm tra vị trí vua ---
-king_position(Color, Col, Row) :-
-    piece_at(Col, Row, Color, king).
 
-% --- Kiểm tra bị tấn công ---
-attacked(Color, Col, Row) :-
-    (Color = white -> Opponent = black ; Opponent = white),
-    piece_at(C, R, Opponent, Piece),
-    legal_move(Piece, Opponent, C, R, Col, Row).
-
-% --- Kiểm tra chiếu ---
-in_check(Color) :-
-    king_position(Color, Col, Row),
-    attacked(Color, Col, Row).

@@ -7,6 +7,11 @@
 
 last_move(0,0,0,0). % Fact để lưu nước đi cuối cùng dùng trong en_passant
 
+% Xác định màu quân đối thủ
+opponent_color(white, black).
+opponent_color(black, white).
+
+
 % --- Pawn ---
 pawn_dir(white, 1, 2).
 pawn_dir(black, -1, 7).
@@ -99,11 +104,49 @@ legal_move(rook, Color, C1, R1, C2, R2) :-
 legal_move(queen, Color, C1, R1, C2, R2) :-
     queen_move(C1, R1, C2, R2),
     not_same_color(C2, R2, Color).
-legal_move(king, Color, 5, Row, 7, Row) :- castle_kingside(Color).
-legal_move(king, Color, 5, Row, 3, Row) :- castle_queenside(Color).
 legal_move(king, Color, C1, R1, C2, R2) :-
     king_move(C1, R1, C2, R2),
     not_same_color(C2, R2, Color).
+
+% Kiểm tra quân vua có bị chiếu không
+in_check(Color) :-
+    piece_at(KingCol, KingRow, Color, king),
+    opponent_color(Color, OpponentColor),
+    piece_at(Col, Row, OpponentColor, Piece),
+    legal_move(Piece, OpponentColor, Col, Row, KingCol, KingRow).
+
+% Chiếu hết: Vua bị chiếu và không còn nước đi hợp lệ
+checkmate(Color) :-
+    in_check(Color),
+    \+ has_legal_move(Color).
+
+% Hết nước đi: Vua không bị chiếu nhưng không còn nước đi hợp lệ
+stalemate(Color) :-
+    \+ in_check(Color),
+    \+ has_legal_move(Color).
+
+% Kiểm tra còn nước đi hợp lệ không
+has_legal_move(Color) :-
+    piece_at(C1, R1, Color, Piece),
+    between(1, 8, C2),
+    between(1, 8, R2),
+    legal_move(Piece, Color, C1, R1, C2, R2),
+    \+ causes_check(Piece, Color, C1, R1, C2, R2),
+    !. % Tìm thấy ít nhất 1 nước đi hợp lệ thì dừng
+
+% Kiểm tra nếu di chuyển quân này có làm cho vua bị chiếu không
+causes_check(Piece, Color, C1, R1, C2, R2) :-
+    % Tạm thời di chuyển quân cờ
+    retract(piece_at(C1, R1, Color, Piece)),
+    (retract(piece_at(C2, R2, _, CapturedPiece)) ; CapturedPiece = none),
+    assertz(piece_at(C2, R2, Color, Piece)),
+    (in_check(Color) -> Result = true ; Result = false),
+    % Hoàn tác nước đi
+    retract(piece_at(C2, R2, Color, Piece)),
+    (CapturedPiece \= none -> assertz(piece_at(C2, R2, _, CapturedPiece)) ; true),
+    assertz(piece_at(C1, R1, Color, Piece)),
+    Result = true.
+
 
 % --- Hàm di chuyển quân cờ tổng quát ---
 move_piece(Piece, Color, C1, R1, C2, R2) :-
