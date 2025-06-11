@@ -88,18 +88,19 @@ class Board:
                 rect = pygame.Rect(offset_x + col * self.cell_size, offset_y + row * self.cell_size, self.cell_size, self.cell_size)
                 pygame.draw.rect(self.screen, color, rect)
 
-                # Nếu là ô vua đang bị chiếu -> vẽ viền đỏ
+                # Vẽ viền đỏ nếu là vua đang bị chiếu
                 if self.in_check_square == (row, col):
                     pygame.draw.rect(self.screen, (255, 0, 0), rect, border_thickness)
 
-                # Nếu là ô đang được chọn -> vẽ viền màu khác
-                elif self.selected_square == (row, col):
+                # Vẽ viền màu xanh (hoặc màu khác) nếu là ô đang được chọn
+                if self.selected_square == (row, col):
                     pygame.draw.rect(self.screen, selected_square_color, rect, border_thickness)
 
         # Vẽ thông báo trạng thái
         if self.status_message:
             msg = status_msg_font.render(self.status_message, True, (255, 0, 0))
             self.screen.blit(msg, msg_pos)
+
     def draw_pieces(self, offset_x, offset_y):
         for row in range(8):
             for col in range(8):
