@@ -211,9 +211,26 @@ class Board:
 
                 self.board_state[row][col] = self.board_state[from_row][from_col]
                 self.board_state[from_row][from_col] = None
+                self.selected_square = None
+
+                # ------- Phong cấp -------
+                # Nếu là tốt và đến hàng phong cấp
+                if piece_type == "pawn" and (row_prolog == 1 or row_prolog == 8):
+                    promotion_choice = self.show_promotion_menu()
+                    if promotion_choice is None:
+                        self.selected_square = None
+                        return
+
+                    # Gửi lệnh phong cấp cho Prolog
+                    promote_query = f"promote_pawn({col_prolog}, {row_prolog}, {color}, {promotion_choice})"
+                    list(prolog.query(promote_query))
+                    print(f"Promotion query: {promote_query}")
+
+                    # Cập nhật bàn cờ Python
+                    self.board_state[row][col] = f"{color[0]}_{promotion_choice}"
+                
 
                 self.assert_board_state()
-
                 # Kiểm tra các trạng thái đặc biệt sau khi đi quân
                 enemy_color = "black" if self.turn == "w" else "white"
                 
@@ -386,12 +403,6 @@ class Board:
 
     #         self.selected_square = None
 
-    # # kiểm tra xem ô được chọn có phải là quân của người chơi hay không
-    # def is_valid_selection(self, row, col):
-    #     square = chess.square(col, 7 - row)
-    #     piece = self.chess_board.piece_at(square)
-    #     return piece is not None and piece.color == self.chess_board.turn
-
     # # Kiểm tra kết thúc trò chơi
     # def check_game_end(self):
     #     if self.chess_board.is_checkmate():
@@ -444,89 +455,89 @@ class Board:
     #     self.game_over = False
 
     # # Hiển thị menu phong cấp khi người chơi đi quân tốt đến hàng cuối
-    # def show_promotion_menu(self):
-    #     pygame.font.init()
+    def show_promotion_menu(self):
+        pygame.font.init()
         
-    #     menu_color =  (230, 220, 255)
-    #     menu_border_color = (100, 80, 160)
-    #     menu_btn_color = (140, 120, 200)
-    #     icon_size = (70, 70)
-    #     text_color = (30, 60, 30)
-    #     start_x = 270
-    #     start_y = 270
-    #     offset = 5
-    #     menu_size = 160
-    #     menu_size1 = 40
-    #     border_size = 6
-    #     text_size = 19
-    #     btn_size = 70
-    #     border_thickness = 6
-    #     gap = 10  
+        menu_color =  (230, 220, 255)
+        menu_border_color = (100, 80, 160)
+        menu_btn_color = (140, 120, 200)
+        icon_size = (70, 70)
+        text_color = (30, 60, 30)
+        start_x = 270
+        start_y = 270
+        offset = 5
+        menu_size = 160
+        menu_size1 = 40
+        border_size = 6
+        text_size = 19
+        btn_size = 70
+        border_thickness = 6
+        gap = 10  
 
-    #     menu_rect = pygame.Rect(start_x, start_y, menu_size, menu_size)
-    #     border_rect = pygame.Rect(0, 0, menu_size + border_thickness, menu_size + border_thickness)
-    #     border_rect.center = menu_rect.center
+        menu_rect = pygame.Rect(start_x, start_y, menu_size, menu_size)
+        border_rect = pygame.Rect(0, 0, menu_size + border_thickness, menu_size + border_thickness)
+        border_rect.center = menu_rect.center
 
-    #     menu_rect1 = pygame.Rect(0, 0, menu_size,  menu_size1)
-    #     menu_rect1.bottomleft = (menu_rect.left, menu_rect.top - border_thickness - 1)
-    #     border_rect1 = pygame.Rect(0, 0, menu_size + border_thickness, menu_size1 + border_thickness)
-    #     border_rect1.center = menu_rect1.center
+        menu_rect1 = pygame.Rect(0, 0, menu_size,  menu_size1)
+        menu_rect1.bottomleft = (menu_rect.left, menu_rect.top - border_thickness - 1)
+        border_rect1 = pygame.Rect(0, 0, menu_size + border_thickness, menu_size1 + border_thickness)
+        border_rect1.center = menu_rect1.center
 
-    #     font = pygame.font.Font("fonts/pixelmix_bold.ttf", text_size)
-    #     text = font.render("PROMOTION", False, text_color)
-    #     text_rect = text.get_rect(center = menu_rect1.center)
-    #     overlay = pygame.Surface((menu_size, menu_size), pygame.SRCALPHA)
-    #     overlay.set_alpha(230)
-    #     overlay.fill(menu_color)
+        font = pygame.font.Font("fonts/pixelmix_bold.ttf", text_size)
+        text = font.render("PROMOTION", False, text_color)
+        text_rect = text.get_rect(center = menu_rect1.center)
+        overlay = pygame.Surface((menu_size, menu_size), pygame.SRCALPHA)
+        overlay.set_alpha(230)
+        overlay.fill(menu_color)
         
-    #     btn_queen  = pygame.Rect(offset + start_x, offset + start_y , btn_size, btn_size)
-    #     btn_bishop = pygame.Rect(offset + start_x + gap + btn_size, offset + start_y ,btn_size, btn_size)
-    #     btn_knight = pygame.Rect(offset + start_x, offset + start_y + gap + btn_size, btn_size, btn_size)
-    #     btn_rook   = pygame.Rect(offset + start_x + gap + btn_size, offset + start_y + gap + btn_size, btn_size, btn_size)
+        btn_queen  = pygame.Rect(offset + start_x, offset + start_y , btn_size, btn_size)
+        btn_bishop = pygame.Rect(offset + start_x + gap + btn_size, offset + start_y ,btn_size, btn_size)
+        btn_knight = pygame.Rect(offset + start_x, offset + start_y + gap + btn_size, btn_size, btn_size)
+        btn_rook   = pygame.Rect(offset + start_x + gap + btn_size, offset + start_y + gap + btn_size, btn_size, btn_size)
 
-    #     # Load và resize icon
-    #     color = 'w' if self.chess_board.turn == chess.WHITE else 'b'
-    #     queen_icon  = pygame.image.load(f"images/{color}_queen.png")
-    #     rook_icon   = pygame.image.load(f"images/{color}_rook.png")
-    #     bishop_icon = pygame.image.load(f"images/{color}_bishop.png")
-    #     knight_icon = pygame.image.load(f"images/{color}_knight.png")
+        # Load và resize icon
+        color = 'w' if self.turn == 'w' else 'b'
+        queen_icon  = pygame.image.load(f"images/{color}_queen.png")
+        rook_icon   = pygame.image.load(f"images/{color}_rook.png")
+        bishop_icon = pygame.image.load(f"images/{color}_bishop.png")
+        knight_icon = pygame.image.load(f"images/{color}_knight.png")
 
-    #     queen_icon = pygame.transform.scale(queen_icon, icon_size)
-    #     rook_icon = pygame.transform.scale(rook_icon, icon_size)
-    #     bishop_icon = pygame.transform.scale(bishop_icon, icon_size)
-    #     knight_icon = pygame.transform.scale(knight_icon, icon_size)
+        queen_icon = pygame.transform.scale(queen_icon, icon_size)
+        rook_icon = pygame.transform.scale(rook_icon, icon_size)
+        bishop_icon = pygame.transform.scale(bishop_icon, icon_size)
+        knight_icon = pygame.transform.scale(knight_icon, icon_size)
 
-    #     while True:
-    #         mouse_pos = pygame.mouse.get_pos()
+        while True:
+            mouse_pos = pygame.mouse.get_pos()
 
-    #         pygame.draw.rect(self.screen, menu_border_color, border_rect, width=border_size)
-    #         pygame.draw.rect(self.screen, menu_border_color, border_rect1, width=border_size)
-    #         self.screen.blit(overlay, menu_rect.topleft)
-    #         pygame.draw.rect(self.screen, menu_color, menu_rect1)    
-    #         self.screen.blit(text, text_rect)
+            pygame.draw.rect(self.screen, menu_border_color, border_rect, width=border_size)
+            pygame.draw.rect(self.screen, menu_border_color, border_rect1, width=border_size)
+            self.screen.blit(overlay, menu_rect.topleft)
+            pygame.draw.rect(self.screen, menu_color, menu_rect1)    
+            self.screen.blit(text, text_rect)
             
-    #         def draw_button(btn, icon):
-    #             is_hovered = btn.collidepoint(mouse_pos)
-    #             color = tuple(c + 20 for c in menu_btn_color) if is_hovered else menu_btn_color
-    #             pygame.draw.rect(self.screen, color, btn)
-    #             self.screen.blit(icon, (btn.left, btn.top - offset))
-    #         draw_button(btn_queen, queen_icon)
-    #         draw_button(btn_bishop, bishop_icon)
-    #         draw_button(btn_knight, knight_icon)
-    #         draw_button(btn_rook, rook_icon)
+            def draw_button(btn, icon):
+                is_hovered = btn.collidepoint(mouse_pos)
+                color = tuple(c + 20 for c in menu_btn_color) if is_hovered else menu_btn_color
+                pygame.draw.rect(self.screen, color, btn)
+                self.screen.blit(icon, (btn.left, btn.top - offset))
+            draw_button(btn_queen, queen_icon)
+            draw_button(btn_bishop, bishop_icon)
+            draw_button(btn_knight, knight_icon)
+            draw_button(btn_rook, rook_icon)
 
-    #         pygame.display.flip()
-    #         for event in pygame.event.get():
-    #             if event.type == pygame.QUIT:
-    #                 pygame.quit()
-    #                 return None
-    #             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-    #                 mouse_pos = event.pos
-    #                 if btn_queen.collidepoint(mouse_pos):
-    #                     return chess.QUEEN
-    #                 elif btn_rook.collidepoint(mouse_pos):
-    #                     return chess.ROOK
-    #                 elif btn_bishop.collidepoint(mouse_pos):
-    #                     return chess.BISHOP
-    #                 elif btn_knight.collidepoint(mouse_pos):
-    #                     return chess.KNIGHT
+            pygame.display.flip()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    return None
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    mouse_pos = event.pos
+                    if btn_queen.collidepoint(mouse_pos):
+                        return "queen"
+                    elif btn_rook.collidepoint(mouse_pos):
+                        return "rook"
+                    elif btn_bishop.collidepoint(mouse_pos):
+                        return "bishop"
+                    elif btn_knight.collidepoint(mouse_pos):
+                        return "knight"

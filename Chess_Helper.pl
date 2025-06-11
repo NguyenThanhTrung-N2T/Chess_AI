@@ -55,4 +55,7 @@ not_same_color(C2, R2, Color) :-
     (\+ piece_at(C2, R2, _, _));
     (piece_at(C2, R2, OtherColor, _), OtherColor \= Color).
 
-
+% --- Hàm phong cấp quân cờ ---
+promote_pawn(C, R, Color, NewPiece) :-
+    retract(piece_at(C, R, Color, pawn)),
+    assertz(piece_at(C, R, Color, NewPiece)).
