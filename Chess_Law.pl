@@ -4,6 +4,9 @@
 :- consult('Chess_Helper.pl').
 :- dynamic piece_at/4.
 :- dynamic last_move/4.
+% đánh dấu khi vua và xe của màu đó đã di chuyển
+:- dynamic king_moved/1.
+:- dynamic rook_moved/2.
 
 last_move(0,0,0,0). % Fact để lưu nước đi cuối cùng dùng trong en_passant
 
@@ -88,9 +91,9 @@ king_move(C1, R1, C2, R2) :-
 
 % --- Luật tổng quát kiểm tra nước đi hợp lệ ---
 legal_move(pawn, Color, C1, R1, C2, R2) :-
-    (pawn_move(Color, C1, R1, C2, R2) ;
-     pawn_capture(Color, C1, R1, C2, R2) ;
-     en_passant(Color, C1, R1, C2, R2)),
+    (   pawn_move(Color, C1, R1, C2, R2) ;
+        pawn_capture(Color, C1, R1, C2, R2) ;
+        en_passant(Color, C1, R1, C2, R2)),
     not_same_color(C2, R2, Color).
 legal_move(knight, Color, C1, R1, C2, R2) :-
     knight_move(C1, R1, C2, R2),
@@ -105,7 +108,9 @@ legal_move(queen, Color, C1, R1, C2, R2) :-
     queen_move(C1, R1, C2, R2),
     not_same_color(C2, R2, Color).
 legal_move(king, Color, C1, R1, C2, R2) :-
-    king_move(C1, R1, C2, R2),
+    ( castle_king_side(Color, C1, R1, C2, R2) ; 
+      castle_queen_side(Color, C1, R1, C2, R2) ; 
+      king_move(C1, R1, C2, R2)),
     not_same_color(C2, R2, Color).
 
 % Kiểm tra quân vua có bị chiếu không
@@ -165,4 +170,26 @@ move_piece(Piece, Color, C1, R1, C2, R2) :-
     (\+ in_check(Color)),
     retractall(last_move(_,_,_,_)),
     assertz(last_move(C1, R1, C2, R2)),
+
+    % Đánh dấu nếu quân xe di chuyển (xe ban đầu ở cột 1 hoặc 8)
+    (Piece = rook ->
+        (retractall(rook_moved(Color, C1)), assertz(rook_moved(Color, C1)))
+    ; true),
+
+    % Đánh dấu nếu quân vua di chuyển
+    (Piece = king -> 
+        (retractall(king_moved(Color)), assertz(king_moved(Color))),
+        
+        % Nếu thực hiện nhập thành
+        (abs(C2 - C1) =:= 2 ->
+            (C2 > C1 -> % Nhập thành bên vua
+                RookColOld is 8, RookColNew is 6
+            ; % Nhập thành bên hậu
+                RookColOld is 1, RookColNew is 4
+            ),
+            retract(piece_at(RookColOld, R1, Color, rook)),
+            assertz(piece_at(RookColNew, R1, Color, rook))
+        ; true)
+    ; true),
+
     !.

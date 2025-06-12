@@ -2,6 +2,10 @@ import pygame
 import os
 from BanCo import Board  # Import lớp Board của bạn
 from AI import ChessAI  # Import lớp AI của bạn
+from pyswip import Prolog
+
+prolog = Prolog()
+prolog.consult("Chess_Law.pl")  # Dùng luật cờ viết bằng Prolog
 
 screen_w = 1000
 screen_h = 700
@@ -260,6 +264,11 @@ def result_popup(screen, board):
                         return True
     return False
 
+# reset facts trong Prolog khi bắt đầu trò chơi mới
+def reset_prolog():
+    Board.clear_board()
+    print("Reset Prolog done.")
+
 def main():
     pygame.init()
     pygame.font.init()
@@ -388,6 +397,9 @@ def main():
                 elif btn_new.collidepoint(mouse_x, mouse_y):
                     # Click SOUND
                     click_sound.play()
+
+                    # reset Prolog facts
+                    reset_prolog()
 
                     mode = draw_menu(screen)
                     back_clicked = False

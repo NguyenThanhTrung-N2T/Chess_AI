@@ -1,5 +1,6 @@
 import pygame
 import os
+
 from pyswip import Prolog
 
 prolog = Prolog()
@@ -65,6 +66,7 @@ class Board:
             ['w_rook', 'w_knight', 'w_bishop', 'w_queen', 'w_king', 'w_bishop', 'w_knight', 'w_rook']
         ]
 
+    # Tải hình ảnh quân cờ từ thư mục 'images'
     def load_images(self):
         pieces = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king']
         colors = ['w', 'b']
@@ -81,6 +83,7 @@ class Board:
                     print(f"Không tìm thấy hình ảnh: {path}")
         return images
 
+    # Vẽ bàn cờ
     def draw_board(self, offset_x, offset_y):
         for row in range(8):
             for col in range(8):
@@ -101,6 +104,7 @@ class Board:
             msg = status_msg_font.render(self.status_message, True, (255, 0, 0))
             self.screen.blit(msg, msg_pos)
 
+    # Vẽ các quân cờ trên bàn cờ
     def draw_pieces(self, offset_x, offset_y):
         for row in range(8):
             for col in range(8):
@@ -115,30 +119,45 @@ class Board:
         color_code, piece_type = piece_str.split("_")  # e  .g. "w_rook" -> ["w", "rook"]
         color = "white" if color_code == "w" else "black"
         return piece_type, color
+    
 
+    # Vẽ các ô hợp lệ cho quân cờ đã chọn ( đang fix )
     # def highlight_squares(self, offset_x=0, offset_y=0):
-    #     if self.selected_square is not None:
-    #         row, col = self.selected_square
-    #         piece = self.board_state[row][col]
-    #         if piece:
-    #             piece_type, color = self.parse_piece(piece)
-    #             # Chuyển đổi sang tọa độ Prolog
-    #             prolog_row = 8 - row
-    #             prolog_col = col + 1
-    #             # Gọi Prolog lấy các nước đi hợp lệ
-    #             query = f"all_legal_moves('{color}', {prolog_col}, {prolog_row}, Moves)"
+    #     if self.selected_square is None:
+    #         return  # Chưa chọn quân thì không highlight
+
+    #     from_row, from_col = self.selected_square
+    #     piece = self.board_state[from_row][from_col]
+
+    #     if not piece:
+    #         return  # Tránh lỗi nếu ô được chọn không có quân
+
+    #     piece_type, color = self.parse_piece(piece)
+
+    #     # Tọa độ Prolog
+    #     from_row_prolog = 8 - from_row
+    #     from_col_prolog = from_col + 1
+
+    #     # Duyệt toàn bộ bàn cờ
+    #     for to_row in range(8):
+    #         for to_col in range(8):
+    #             to_row_prolog = 8 - to_row
+    #             to_col_prolog = to_col + 1
+
+    #             # Bỏ qua nếu là chính ô đang đứng
+    #             if from_row == to_row and from_col == to_col:
+    #                 continue
+
+    #             # Gọi Prolog để kiểm tra xem có đi hợp lệ không
+    #             query = f"move_piece({piece_type}, {color}, {from_col_prolog}, {from_row_prolog}, {to_col_prolog}, {to_row_prolog})"
     #             result = list(prolog.query(query))
-    #             moves = []
+
     #             if result:
-    #                 moves = result[0]['Moves']
-    #             print("Highlight moves:", moves)
-    #             # Vẽ viền các ô hợp lệ
-    #             for (c2, r2) in moves:
-    #                 py_row = 8 - r2
-    #                 py_col = c2 - 1
-    #                 rect = pygame.Rect(offset_x + py_col * self.cell_size, offset_y + py_row * self.cell_size, self.cell_size, self.cell_size)
+    #                 # Nếu hợp lệ thì vẽ viền
+    #                 rect = pygame.Rect(offset_x + to_col * self.cell_size, offset_y + to_row * self.cell_size, self.cell_size, self.cell_size)
     #                 pygame.draw.rect(self.screen, highlight_square_color, rect, border_thickness)
 
+            
     # Kiểm tra xem quân cờ có phải là quân của người chơi hiện tại hay không
     def is_player_piece(self, piece):
         # piece: 'w_pawn', 'b_queen', ...
@@ -153,6 +172,7 @@ class Board:
         self.turn = "b" if self.turn == "w" else "w"
         self.status_message = f"Turn: {'White' if self.turn == 'w' else 'Black'}"
 
+    # Phương thức assert_board_state để cập nhật trạng thái bàn cờ vào Prolog
     def assert_board_state(self):
         # Xóa hết các fact piece_at/4 trong Prolog
         list(prolog.query("retractall(piece_at(_,_,_,_))"))
@@ -211,6 +231,19 @@ class Board:
 
                 self.board_state[row][col] = self.board_state[from_row][from_col]
                 self.board_state[from_row][from_col] = None
+
+                # ------- Xử lý nhập thành trên giao diện -------
+                if piece_type == "king" and abs(col - from_col) == 2:
+                    if col > from_col:  # Nhập thành bên vua
+                        rook_from_col = 7  # Cột 8 trong Python
+                        rook_to_col = from_col + 1
+                    else:  # Nhập thành bên hậu
+                        rook_from_col = 0  # Cột 1 trong Python
+                        rook_to_col = from_col - 1
+
+                    self.board_state[row][rook_to_col] = self.board_state[row][rook_from_col]
+                    self.board_state[row][rook_from_col] = None
+
                 self.selected_square = None
 
                 # ------- Phong cấp -------
@@ -541,3 +574,10 @@ class Board:
                         return "bishop"
                     elif btn_knight.collidepoint(mouse_pos):
                         return "knight"
+
+    # Xóa toàn bộ trạng thái bàn cờ trong Prolog
+    def clear_board():
+        list(prolog.query("retractall(piece_at(_, _, _, _))"))
+        list(prolog.query("retractall(last_move(_, _, _, _))"))
+        list(prolog.query("retractall(king_moved(_))"))
+        list(prolog.query("retractall(rook_moved(_, _))"))

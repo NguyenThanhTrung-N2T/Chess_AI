@@ -59,3 +59,38 @@ not_same_color(C2, R2, Color) :-
 promote_pawn(C, R, Color, NewPiece) :-
     retract(piece_at(C, R, Color, pawn)),
     assertz(piece_at(C, R, Color, NewPiece)).
+
+
+castle_king_side(Color, C1, R1, C2, R2) :-
+    % Vị trí vua và xe cho nhập thành bên vua
+    (Color = white -> 
+        C1 = 5, R1 = 1, C2 = 7, R2 = 1, RookCol = 8, RookRow = 1;
+     Color = black ->
+        C1 = 5, R1 = 8, C2 = 7, R2 = 8, RookCol = 8, RookRow = 8),
+    % Vua và xe chưa di chuyển
+    \+ king_moved(Color),
+    \+ rook_moved(Color, king_side),
+    % Các ô giữa vua và xe phải trống
+    clear_straight(C1, R1, RookCol, RookRow),
+    % Vua không bị chiếu, không đi qua hoặc đứng ở ô bị chiếu
+    \+ in_check(Color),
+    NextCol is C1 + 1,
+    \+ causes_check(king, Color, C1, R1, NextCol, R1),
+    \+ causes_check(king, Color, C1, R1, C2, R2).
+
+castle_queen_side(Color, C1, R1, C2, R2) :-
+    % Vị trí vua và xe cho nhập thành bên hậu
+    (Color = white -> 
+        C1 = 5, R1 = 1, C2 = 3, R2 = 1, RookCol = 1, RookRow = 1;
+     Color = black ->
+        C1 = 5, R1 = 8, C2 = 3, R2 = 8, RookCol = 1, RookRow = 8),
+    % Vua và xe chưa di chuyển
+    \+ king_moved(Color),
+    \+ rook_moved(Color, queen_side),
+    % Các ô giữa vua và xe phải trống
+    clear_straight(C1, R1, RookCol, RookRow),
+    % Vua không bị chiếu, không đi qua hoặc đứng ở ô bị chiếu
+    \+ in_check(Color),
+    NextCol is C1 - 1,
+    \+ causes_check(king, Color, C1, R1, NextCol, R1),
+    \+ causes_check(king, Color, C1, R1, C2, R2).
