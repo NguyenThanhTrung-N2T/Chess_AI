@@ -141,17 +141,27 @@ has_legal_move(Color) :-
 
 % Kiểm tra nếu di chuyển quân này có làm cho vua bị chiếu không
 causes_check(Piece, Color, C1, R1, C2, R2) :-
+    % Lưu trạng thái last_move hiện tại
+    last_move(LMC1, LMR1, LMC2, LMR2),
+    
     % Tạm thời di chuyển quân cờ
     retract(piece_at(C1, R1, Color, Piece)),
     (retract(piece_at(C2, R2, _, CapturedPiece)) ; CapturedPiece = none),
     assertz(piece_at(C2, R2, Color, Piece)),
+    
+    % Kiểm tra vua có bị chiếu không
     (in_check(Color) -> Result = true ; Result = false),
+    
     % Hoàn tác nước đi
     retract(piece_at(C2, R2, Color, Piece)),
     (CapturedPiece \= none -> assertz(piece_at(C2, R2, _, CapturedPiece)) ; true),
     assertz(piece_at(C1, R1, Color, Piece)),
+    
+    % Hoàn tác last_move
+    retractall(last_move(_, _, _, _)),
+    assertz(last_move(LMC1, LMR1, LMC2, LMR2)),
+    
     Result = true.
-
 
 % --- Hàm di chuyển quân cờ tổng quát ---
 move_piece(Piece, Color, C1, R1, C2, R2) :-
