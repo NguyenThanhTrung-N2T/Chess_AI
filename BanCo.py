@@ -221,6 +221,10 @@ class Board:
             result = list(prolog.query(query))
             print(f"Query: {query} -> Result: {result}")
 
+            print("Số nước đi không ăn quân trong Prolog:")
+            for sol in prolog.query("halfmove_clock(HalfMove)"):
+                print(sol)
+
             if result:
                 captured_piece = self.board_state[row][col]
 
@@ -279,6 +283,14 @@ class Board:
                 stalemate_query = f"stalemate({enemy_color})"
                 if list(prolog.query(stalemate_query)):
                     self.status_message = "Stalemate! It's a draw!"
+                    game_over_stalemate_sound.play()
+                    self.game_over = True
+                    return
+                
+                # Hòa 50 nước
+                fifty_moves_query = f"draw_by_fifty_moves"
+                if list(prolog.query(fifty_moves_query)):
+                    self.status_message = "Draw by 50-move rule!"
                     game_over_stalemate_sound.play()
                     self.game_over = True
                     return
@@ -581,3 +593,4 @@ class Board:
         list(prolog.query("retractall(last_move(_, _, _, _))"))
         list(prolog.query("retractall(king_moved(_))"))
         list(prolog.query("retractall(rook_moved(_, _))"))
+        list(prolog.query("retractall(halfmove_clock(_))"))

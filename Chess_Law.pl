@@ -7,6 +7,9 @@
 % đánh dấu khi vua và xe của màu đó đã di chuyển
 :- dynamic king_moved/1.
 :- dynamic rook_moved/2.
+% đếm nửa nước (halfmove clock) để tính nước đi ( hòa 50 nước đi không ăn quân)
+:- dynamic halfmove_clock/1.
+halfmove_clock(0). % Đếm nửa nước (mỗi lần di chuyển là +1)
 
 last_move(0,0,0,0). % Fact để lưu nước đi cuối cùng dùng trong en_passant
 
@@ -130,6 +133,11 @@ stalemate(Color) :-
     \+ in_check(Color),
     \+ has_legal_move(Color).
 
+% Kiểm tra hòa do 50 nước đi không ăn quân
+draw_by_fifty_moves :-
+    halfmove_clock(N),
+    N >= 100. % 100 nửa nước = 50 nước đầy đủ
+
 % Kiểm tra còn nước đi hợp lệ không
 has_legal_move(Color) :-
     piece_at(C1, R1, Color, Piece),
@@ -166,22 +174,33 @@ causes_check(Piece, Color, C1, R1, C2, R2) :-
 % --- Hàm di chuyển quân cờ tổng quát ---
 move_piece(Piece, Color, C1, R1, C2, R2) :-
     legal_move(Piece, Color, C1, R1, C2, R2),
+
+    % Kiểm tra có quân bị ăn không
+    (piece_at(C2, R2, _, _) -> Captured = true ; Captured = false),
+
+    % Thực hiện di chuyển
     retract(piece_at(C1, R1, Color, Piece)),
+
     (   % Nếu là en passant
         (Piece = pawn, en_passant(Color, C1, R1, C2, R2))
     ->  % Xóa tốt bị bắt qua đường
         pawn_dir(Color, Dir, _),
         RowPawn is R2 - Dir,
-        retract(piece_at(C2, RowPawn, _, pawn))
-    ;   % Nếu không phải en passant, xử lý bình thường
-        (retract(piece_at(C2, R2, _, _)); true)
+        retract(piece_at(C2, RowPawn, _, pawn)),
+        CapturedFlag = true
+    ;   % Nếu không phải en passant
+        (Captured -> retract(piece_at(C2, R2, _, _)) ; true),
+        CapturedFlag = Captured
     ),
+
     assertz(piece_at(C2, R2, Color, Piece)),
+
     (\+ in_check(Color)),
+
     retractall(last_move(_,_,_,_)),
     assertz(last_move(C1, R1, C2, R2)),
 
-    % Đánh dấu nếu quân xe di chuyển (xe ban đầu ở cột 1 hoặc 8)
+    % Đánh dấu nếu quân xe di chuyển
     (Piece = rook ->
         (retractall(rook_moved(Color, C1)), assertz(rook_moved(Color, C1)))
     ; true),
@@ -189,17 +208,27 @@ move_piece(Piece, Color, C1, R1, C2, R2) :-
     % Đánh dấu nếu quân vua di chuyển
     (Piece = king -> 
         (retractall(king_moved(Color)), assertz(king_moved(Color))),
-        
-        % Nếu thực hiện nhập thành
-        (abs(C2 - C1) =:= 2 ->
-            (C2 > C1 -> % Nhập thành bên vua
+        (abs(C2 - C1) =:= 2 ->  % Nếu nhập thành
+            (C2 > C1 ->
                 RookColOld is 8, RookColNew is 6
-            ; % Nhập thành bên hậu
+            ;
                 RookColOld is 1, RookColNew is 4
             ),
             retract(piece_at(RookColOld, R1, Color, rook)),
             assertz(piece_at(RookColNew, R1, Color, rook))
         ; true)
     ; true),
+
+    % Cập nhật đồng hồ 50 nước
+    (
+        (Piece = pawn ; CapturedFlag = true) ->
+            retractall(halfmove_clock(_)),
+            assertz(halfmove_clock(0))
+        ;
+            (retract(halfmove_clock(N)) -> true ; N = 0),
+            N1 is N + 1,
+            retractall(halfmove_clock(_)),
+            assertz(halfmove_clock(N1))
+    ),
 
     !.
