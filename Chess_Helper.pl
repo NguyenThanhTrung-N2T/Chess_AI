@@ -94,3 +94,33 @@ castle_queen_side(Color, C1, R1, C2, R2) :-
     NextCol is C1 - 1,
     \+ causes_check(king, Color, C1, R1, NextCol, R1),
     \+ causes_check(king, Color, C1, R1, C2, R2).
+
+% --- Kiểm tra tấn công ---
+is_attacking(pawn, white, C1, R1, C2, R2) :-
+    R2 is R1 + 1,
+    (C2 is C1 + 1 ; C2 is C1 - 1).
+
+is_attacking(pawn, black, C1, R1, C2, R2) :-
+    R2 is R1 - 1,
+    (C2 is C1 + 1 ; C2 is C1 - 1).
+
+is_attacking(knight, _, C1, R1, C2, R2) :-
+    (abs(C1 - C2) =:= 2, abs(R1 - R2) =:= 1) ;
+    (abs(C1 - C2) =:= 1, abs(R1 - R2) =:= 2).
+
+is_attacking(bishop, _, C1, R1, C2, R2) :-
+    abs(C1 - C2) =:= abs(R1 - R2),
+    clear_diagonal(C1, R1, C2, R2).
+
+is_attacking(rook, _, C1, R1, C2, R2) :-
+    (C1 =:= C2 ; R1 =:= R2),
+    clear_straight(C1, R1, C2, R2).
+
+is_attacking(queen, _, C1, R1, C2, R2) :-
+    (is_attacking(bishop, _, C1, R1, C2, R2) ;
+    is_attacking(rook, _, C1, R1, C2, R2)).
+
+is_attacking(king, _, C1, R1, C2, R2) :-
+    abs(C1 - C2) =< 1,
+    abs(R1 - R2) =< 1,
+    (C1 \= C2 ; R1 \= R2).

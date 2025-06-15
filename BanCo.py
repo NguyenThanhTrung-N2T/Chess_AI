@@ -297,9 +297,9 @@ class Board:
 
                 # Check
                 check_query = f"in_check({enemy_color})"
-                print(f"Check query: {check_query}")
                 if list(prolog.query(check_query)):
                     self.status_message = f"{enemy_color.capitalize()} is in check!"
+                    print(f"Check query: {check_query}")
                     check_sound.play()
 
                     # Tìm vị trí quân vua đối thủ

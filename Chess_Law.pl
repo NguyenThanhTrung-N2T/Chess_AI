@@ -116,18 +116,23 @@ legal_move(king, Color, C1, R1, C2, R2) :-
       king_move(C1, R1, C2, R2)),
     not_same_color(C2, R2, Color).
 
-% Kiểm tra quân vua có bị chiếu không
+% --- Kiểm tra quân vua bị chiếu --- ( chưa fix xong )
 in_check(Color) :-
-    piece_at(KingCol, KingRow, Color, king),
     opponent_color(Color, OpponentColor),
-    piece_at(Col, Row, OpponentColor, Piece),
-    legal_move(Piece, OpponentColor, Col, Row, KingCol, KingRow).
-
-% Chiếu hết: Vua bị chiếu và không còn nước đi hợp lệ
+    piece_at(KingC, KingR, Color, king),
+    piece_at(C, R, OpponentColor, Piece),
+    is_attacking(Piece, OpponentColor, C, R, KingC, KingR),
+    !.
+% --- Kiểm tra chiếu hết --- ( chưa fix xong )
 checkmate(Color) :-
     in_check(Color),
-    \+ has_legal_move(Color).
-
+    \+ (piece_at(C, R, Color, Piece),
+        piece_at(CK, RK, Color, king),
+        between(1, 8, NewC),
+        between(1, 8, NewR),
+        legal_move(Piece, Color, C, R, NewC, NewR),
+        (\+ causes_check(Piece, Color, C, R, NewC, NewR))
+    ).
 % Hết nước đi: Vua không bị chiếu nhưng không còn nước đi hợp lệ
 stalemate(Color) :-
     \+ in_check(Color),
