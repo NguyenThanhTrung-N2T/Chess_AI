@@ -306,6 +306,22 @@ class Board:
                     game_over_stalemate_sound.play()
                     self.game_over = True
                     return
+                
+                # Hòa lặp lại 3 lần 
+                threefold_repetition = f"draw_by_threefold_repetition"
+                if list(prolog.query(threefold_repetition)):
+                    self.status_message = "Draw by threefold repetition!"
+                    game_over_stalemate_sound.play()
+                    self.game_over = True
+                    return
+                
+                # Hòa không đủ quân chiếu 
+                insufficient_query = f"insufficient_material"
+                if list(prolog.query(insufficient_query)):
+                    self.status_message = "Draw by insufficient material!"
+                    game_over_stalemate_sound.play()
+                    self.game_over = True
+                    return
 
                 # Check
                 check_query = f"in_check({enemy_color})"

@@ -11,6 +11,11 @@
 :- dynamic halfmove_clock/1.
 halfmove_clock(0). % Đếm nửa nước (mỗi lần di chuyển là +1)
 
+:- dynamic board_history/1.
+
+% Lưu stack lịch sử
+board_history([]).
+
 last_move(0,0,0,0). % Fact để lưu nước đi cuối cùng dùng trong en_passant
 
 % Xác định màu quân đối thủ
@@ -143,6 +148,39 @@ draw_by_fifty_moves :-
     halfmove_clock(N),
     N >= 100. % 100 nửa nước = 50 nước đầy đủ
 
+% Luật kiểm tra hòa lặp lại 3 lần
+draw_by_threefold_repetition :-
+    snapshot(Current),
+    count_occurrences(Current, Count),
+    Count >= 3.
+
+
+% Tính màu ô (đen hoặc trắng)
+square_color(C, R, white) :- Mod is (C + R) mod 2, Mod =:= 0.
+square_color(C, R, black) :- Mod is (C + R) mod 2, Mod =:= 1.
+
+% Lấy danh sách các quân cờ còn lại trừ vua
+get_remaining_pieces(RemainingPieces) :-
+    findall((C, R, Color, Piece), (piece_at(C, R, Color, Piece), Piece \= king), RemainingPieces).
+
+% Kiểm tra không đủ quân chiếu hết
+insufficient_material :-
+    get_remaining_pieces([]).  % Chỉ còn 2 vua
+
+insufficient_material :-
+    get_remaining_pieces([(_, _, _, knight)]).  % Chỉ còn vua + mã
+
+insufficient_material :-
+    get_remaining_pieces([(_, _, _, bishop)]).  % Chỉ còn vua + tượng
+
+% Trường hợp hai quân tượng đứng cùng màu ô
+insufficient_material :-
+    get_remaining_pieces([(C1, R1, _, bishop), (C2, R2, _, bishop)]),
+    square_color(C1, R1, Color1),
+    square_color(C2, R2, Color2),
+    Color1 = Color2.  % Hai quân tượng đứng cùng màu -> hòa
+
+
 % Luật kiểm tra chiếu hết
 checkmate(Color) :-
     in_check(Color),
@@ -245,5 +283,9 @@ move_piece(Piece, Color, C1, R1, C2, R2) :-
             retractall(halfmove_clock(_)),
             assertz(halfmove_clock(N1))
     ),
+
+    % Cập nhật lịch sử bàn cờ để kiểm tra lặp lại 3 lần
+    push_board_history,
+
 
     !.

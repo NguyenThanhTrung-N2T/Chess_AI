@@ -132,3 +132,21 @@ is_attacking(king, _, C1, R1, C2, R2) :-
     abs(C1 - C2) =< 1,
     abs(R1 - R2) =< 1,
     (C1 \= C2 ; R1 \= R2).
+
+
+% Chụp nguyên bàn cờ hiện tại
+snapshot(Snapshot) :-
+    findall(piece_at(C, R, Color, Piece), piece_at(C, R, Color, Piece), SnapshotUnsorted),
+    sort(SnapshotUnsorted, Snapshot).
+
+% Push trạng thái hiện tại vào lịch sử
+push_board_history :-
+    snapshot(Current),
+    retract(board_history(History)),
+    assertz(board_history([Current | History])).
+
+% Đếm số lần trạng thái hiện tại đã xuất hiện
+count_occurrences(Current, Count) :-
+    board_history(History),
+    include(=(Current), History, Matches),
+    length(Matches, Count).
