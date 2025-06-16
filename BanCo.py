@@ -211,6 +211,18 @@ class Board:
                 return
             piece_type, _ = self.parse_piece(piece)
 
+            # Nếu chọn lại quân cũ thì bỏ chọn
+            if (row, col) == (from_row, from_col):
+                self.selected_square = None
+                return
+            
+            # Nếu chọn quân cùng màu thì bỏ chọn
+            # (Chính xác hơn là: nếu chọn một quân khác cùng màu thì đổi quân đang chọn)
+            clicked_piece_on_board = self.board_state[row][col]
+            if clicked_piece_on_board and self.is_player_piece(clicked_piece_on_board):
+                self.selected_square = (row, col)
+                return
+            
             self.assert_board_state()
 
             print("Trạng thái last_move trong Prolog:")
@@ -328,18 +340,6 @@ class Board:
     def is_enemy_king(self, piece, enemy_color):
         piece_type, color = self.parse_piece(piece)
         return piece_type == "king" and color == enemy_color
-
-    # khi cần lưu trạng thái bàn cờ vào Prolog
-    # # Sau khi thực hiện nước đi thành công:
-    # assert_board_state(self.board_state)  # assert lại trạng thái mới vào Prolog
-    # list(prolog.query("save_board_state."))  # lưu vào lịch sử Prolog
-
-    # # Khi cần kiểm tra hòa lặp lại 3 lần:
-    # if list(prolog.query("board_repetition(3).")):
-    #     self.status_message = "Draw by Threefold Repetition!"
-
-
-
 
     # # Xử lý sự kiện click chuột ( chọn quân cờ và nước đi )
     # def handle_click(self, row, col):
