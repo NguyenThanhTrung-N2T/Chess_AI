@@ -7,33 +7,38 @@ between_min_max(A, B, Min, Max) :-
 % --- Kiểm tra đường thẳng ---
 clear_straight(C1, R1, C2, R2) :-
     (C1 =:= C2 ->
-        between_min_max(R1, R2, Min, Max),
-        \+ (between(Min, Max, R), R \= R1, R \= R2, piece_at(C1, R, _, _))
+        between_min_max(R1, R2, MinR, MaxR),
+        % Đảm bảo R_intermediate nằm trong bàn cờ, mặc dù between_min_max thường đảm bảo điều này nếu C1,R1,C2,R2 hợp lệ
+        \+ (between(MinR, MaxR, R_intermediate), R_intermediate >= 1, R_intermediate =< 8, piece_at(C1, R_intermediate, _, _))
     ;
      R1 =:= R2 ->
-        between_min_max(C1, C2, Min, Max),
-        \+ (between(Min, Max, C), C \= C1, C \= C2, piece_at(C, R1, _, _))
+        between_min_max(C1, C2, MinC, MaxC),
+        % Đảm bảo C_intermediate nằm trong bàn cờ
+        \+ (between(MinC, MaxC, C_intermediate), C_intermediate >= 1, C_intermediate =< 8, piece_at(C_intermediate, R1, _, _))
     ).
 
 % --- Kiểm tra đường chéo ---
 clear_diagonal(C1, R1, C2, R2) :-
-    abs(C1 - C2) =:= abs(R1 - R2),
-    ColStep is (C2 - C1) // abs(C2 - C1),
-    RowStep is (R2 - R1) // abs(R2 - R1),
-    clear_diagonal_step(C1, R1, C2, R2, ColStep, RowStep).
+    % abs(C1 - C2) =:= abs(R1 - R2), % Điều kiện này đã có ở is_attacking(bishop,...)
+    ColStep is sign(C2 - C1),
+    RowStep is sign(R2 - R1),
+    NextC is C1 + ColStep,
+    NextR is R1 + RowStep,
+    clear_diagonal_step(NextC, NextR, C2, R2, ColStep, RowStep).
 
+
+% Dừng khi vị trí hiện tại là ngay TRƯỚC ô đích
 clear_diagonal_step(C, R, C2, R2, _, _) :-
-    C1 is C + ((C2 - C) // abs(C2 - C)),
-    R1 is R + ((R2 - R) // abs(R2 - R)),
-    C1 =:= C2, R1 =:= R2, !.
+    (C =:= C2, R =:= R2), !. % Tới đích thì dừng, không kiểm tra ô đích
+
 clear_diagonal_step(C, R, C2, R2, ColStep, RowStep) :-
-    C1 is C + ColStep,
-    R1 is R + RowStep,
-    (C1 =:= C2, R1 =:= R2 -> true
-    ;
-        (\+ piece_at(C1, R1, _, _)),
-        clear_diagonal_step(C1, R1, C2, R2, ColStep, RowStep)
-    ).
+    % Ô trung gian (C,R) phải nằm trong bàn cờ
+    C >= 1, C =< 8, R >= 1, R =< 8,
+    \+ piece_at(C, R, _, _), % Nếu ô hiện tại không bị cản
+    NextC is C + ColStep,
+    NextR is R + RowStep,
+    clear_diagonal_step(NextC, NextR, C2, R2, ColStep, RowStep).
+
 
 % --- Bishop chỉ kiểm tra đường đi ---
 bishop_move_path(C1, R1, C2, R2) :-
@@ -109,16 +114,19 @@ is_attacking(knight, _, C1, R1, C2, R2) :-
     (abs(C1 - C2) =:= 1, abs(R1 - R2) =:= 2).
 
 is_attacking(bishop, _, C1, R1, C2, R2) :-
+    (C1 \= C2 ; R1 \= R2), % Quân cờ không tấn công chính nó
     abs(C1 - C2) =:= abs(R1 - R2),
     clear_diagonal(C1, R1, C2, R2).
 
 is_attacking(rook, _, C1, R1, C2, R2) :-
+    (C1 \= C2 ; R1 \= R2), % Quân cờ không tấn công chính nó
     (C1 =:= C2 ; R1 =:= R2),
     clear_straight(C1, R1, C2, R2).
 
 is_attacking(queen, _, C1, R1, C2, R2) :-
     (is_attacking(bishop, _, C1, R1, C2, R2) ;
     is_attacking(rook, _, C1, R1, C2, R2)).
+
 
 is_attacking(king, _, C1, R1, C2, R2) :-
     abs(C1 - C2) =< 1,

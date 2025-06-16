@@ -82,8 +82,17 @@ rook_move(C1, R1, C2, R2) :-
 
 % --- Queen ---
 queen_move(C1, R1, C2, R2) :-
-    bishop_move_path(C1, R1, C2, R2);
-    rook_move_path(C1, R1, C2, R2).
+    (
+        (C1 =:= C2, clear_straight(C1, R1, C2, R2));
+        (R1 =:= R2, clear_straight(C1, R1, C2, R2));
+        (abs(C1 - C2) =:= abs(R1 - R2), clear_diagonal(C1, R1, C2, R2))
+    ),
+    ( 
+        \+ piece_at(C2, R2, _, _)
+        ;
+        (piece_at(C2, R2, Color2, _), piece_at(C1, R1, Color1, queen), Color1 \= Color2)
+    ).
+
 
 % --- King ---
 king_move(C1, R1, C2, R2) :-
@@ -116,23 +125,14 @@ legal_move(king, Color, C1, R1, C2, R2) :-
       king_move(C1, R1, C2, R2)),
     not_same_color(C2, R2, Color).
 
-% --- Kiểm tra quân vua bị chiếu --- ( chưa fix xong )
+% --- Kiểm tra quân vua bị chiếu --- ( tạm được )
 in_check(Color) :-
     opponent_color(Color, OpponentColor),
     piece_at(KingC, KingR, Color, king),
     piece_at(C, R, OpponentColor, Piece),
     is_attacking(Piece, OpponentColor, C, R, KingC, KingR),
     !.
-% --- Kiểm tra chiếu hết --- ( chưa fix xong )
-checkmate(Color) :-
-    in_check(Color),
-    \+ (piece_at(C, R, Color, Piece),
-        piece_at(CK, RK, Color, king),
-        between(1, 8, NewC),
-        between(1, 8, NewR),
-        legal_move(Piece, Color, C, R, NewC, NewR),
-        (\+ causes_check(Piece, Color, C, R, NewC, NewR))
-    ).
+
 % Hết nước đi: Vua không bị chiếu nhưng không còn nước đi hợp lệ
 stalemate(Color) :-
     \+ in_check(Color),
@@ -143,6 +143,11 @@ draw_by_fifty_moves :-
     halfmove_clock(N),
     N >= 100. % 100 nửa nước = 50 nước đầy đủ
 
+% Luật kiểm tra chiếu hết
+checkmate(Color) :-
+    in_check(Color),
+    \+ has_legal_move(Color).
+
 % Kiểm tra còn nước đi hợp lệ không
 has_legal_move(Color) :-
     piece_at(C1, R1, Color, Piece),
@@ -150,31 +155,36 @@ has_legal_move(Color) :-
     between(1, 8, R2),
     legal_move(Piece, Color, C1, R1, C2, R2),
     \+ causes_check(Piece, Color, C1, R1, C2, R2),
-    !. % Tìm thấy ít nhất 1 nước đi hợp lệ thì dừng
+    !. % Nếu tìm được 1 nước hợp lệ là dừng ngay
 
 % Kiểm tra nếu di chuyển quân này có làm cho vua bị chiếu không
 causes_check(Piece, Color, C1, R1, C2, R2) :-
     % Lưu trạng thái last_move hiện tại
     last_move(LMC1, LMR1, LMC2, LMR2),
-    
+
+    % Lưu quân bị ăn (nếu có)
+    (piece_at(C2, R2, CapturedColor, CapturedPiece) ->
+        HasCapture = true ; (HasCapture = false, CapturedColor = none, CapturedPiece = none)),
+
     % Tạm thời di chuyển quân cờ
     retract(piece_at(C1, R1, Color, Piece)),
-    (retract(piece_at(C2, R2, _, CapturedPiece)) ; CapturedPiece = none),
+    (HasCapture -> retract(piece_at(C2, R2, CapturedColor, CapturedPiece)) ; true),
     assertz(piece_at(C2, R2, Color, Piece)),
-    
+
     % Kiểm tra vua có bị chiếu không
-    (in_check(Color) -> Result = true ; Result = false),
-    
+    (in_check(Color) -> CheckResult = true ; CheckResult = false),
+
     % Hoàn tác nước đi
     retract(piece_at(C2, R2, Color, Piece)),
-    (CapturedPiece \= none -> assertz(piece_at(C2, R2, _, CapturedPiece)) ; true),
+    (HasCapture -> assertz(piece_at(C2, R2, CapturedColor, CapturedPiece)) ; true),
     assertz(piece_at(C1, R1, Color, Piece)),
-    
-    % Hoàn tác last_move
+
+    % Khôi phục last_move
     retractall(last_move(_, _, _, _)),
     assertz(last_move(LMC1, LMR1, LMC2, LMR2)),
-    
-    Result = true.
+
+    % Trả kết quả
+    CheckResult.
 
 % --- Hàm di chuyển quân cờ tổng quát ---
 move_piece(Piece, Color, C1, R1, C2, R2) :-
