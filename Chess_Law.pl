@@ -2,6 +2,7 @@
 
 % --- Khai báo dynamic ---
 :- consult('Chess_Helper.pl').
+:- consult('Chess_AI.pl').
 :- dynamic piece_at/4.
 :- dynamic last_move/4.
 % đánh dấu khi vua và xe của màu đó đã di chuyển

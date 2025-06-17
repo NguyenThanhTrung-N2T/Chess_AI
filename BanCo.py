@@ -610,3 +610,4 @@ class Board:
         list(prolog.query("retractall(king_moved(_))"))
         list(prolog.query("retractall(rook_moved(_, _))"))
         list(prolog.query("retractall(halfmove_clock(_))"))
+        list(prolog.query("retractall(board_history)"))
