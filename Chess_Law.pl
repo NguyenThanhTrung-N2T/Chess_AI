@@ -1,8 +1,8 @@
 % Chess_Law.pl
 
 % --- Khai báo dynamic ---
-:- consult('Chess_Helper.pl').
-:- consult('Chess_AI.pl').
+:- consult('Chess_Helper.pl'). % Helper nên được consult trước nếu Law dùng vị từ từ Helper
+% :- consult('Chess_AI.pl'). % AI là module riêng, không nên là dependency của Law
 :- dynamic piece_at/4.
 :- dynamic last_move/4.
 % đánh dấu khi vua và xe của màu đó đã di chuyển
@@ -18,10 +18,6 @@ halfmove_clock(0). % Đếm nửa nước (mỗi lần di chuyển là +1)
 board_history([]).
 
 last_move(0,0,0,0). % Fact để lưu nước đi cuối cùng dùng trong en_passant
-
-% Xác định màu quân đối thủ
-opponent_color(white, black).
-opponent_color(black, white).
 
 
 % --- Pawn ---
@@ -255,10 +251,14 @@ move_piece(Piece, Color, C1, R1, C2, R2) :-
     assertz(last_move(C1, R1, C2, R2)),
 
     % Đánh dấu nếu quân xe di chuyển
-    (Piece = rook ->
-        (retractall(rook_moved(Color, C1)), assertz(rook_moved(Color, C1)))
-    ; true),
-
+    % Chỉ đánh dấu nếu xe di chuyển TỪ VỊ TRÍ BAN ĐẦU của nó và cờ chưa được set
+    (Piece = rook,
+        ( (Color = white, R1 = 1) ; (Color = black, R1 = 8) ), % Xe ở hàng ban đầu
+        ( C1 = 1 ; C1 = 8 ) -> % Và ở một trong hai cột ban đầu của xe (A hoặc H)
+            ( \+ rook_moved(Color, C1) -> % Nếu cờ cho xe ở cột C1 này chưa được set
+                assertz(rook_moved(Color, C1))
+            ; true )
+    ; true ), % Không làm gì nếu không phải xe hoặc không phải từ vị trí gốc hoặc đã set
     % Đánh dấu nếu quân vua di chuyển
     (Piece = king -> 
         (retractall(king_moved(Color)), assertz(king_moved(Color))),

@@ -1,3 +1,7 @@
+% Xác định màu quân đối thủ
+opponent_color(white, black).
+opponent_color(black, white).
+
 % --- Hàm tiện ích ---
 abs(X, Y) :- X >= 0, Y is X; X < 0, Y is -X.
 
@@ -68,37 +72,41 @@ promote_pawn(C, R, Color, NewPiece) :-
 
 castle_king_side(Color, C1, R1, C2, R2) :-
     % Vị trí vua và xe cho nhập thành bên vua
-    (Color = white -> 
-        C1 = 5, R1 = 1, C2 = 7, R2 = 1, RookCol = 8, RookRow = 1;
-     Color = black ->
-        C1 = 5, R1 = 8, C2 = 7, R2 = 8, RookCol = 8, RookRow = 8),
+    (Color = white -> ExpectedR = 1 ; Color = black -> ExpectedR = 8),
+    C1 = 5, R1 = ExpectedR, % Vua ở vị trí e1/e8
+    C2 = 7, R2 = ExpectedR, % Vua di chuyển đến g1/g8
+    RookActualCol = 8, % Xe ở cột H
     % Vua và xe chưa di chuyển
     \+ king_moved(Color),
-    \+ rook_moved(Color, king_side),
+    \+ rook_moved(Color, RookActualCol), % Kiểm tra xe ở cột H (8) chưa di chuyển
     % Các ô giữa vua và xe phải trống
-    clear_straight(C1, R1, RookCol, RookRow),
+    % clear_straight giữa vua (C1,R1) và vị trí gốc của xe (RookActualCol, R1)
+    clear_straight(C1, R1, RookActualCol, R1),
     % Vua không bị chiếu, không đi qua hoặc đứng ở ô bị chiếu
     \+ in_check(Color),
-    NextCol is C1 + 1,
-    \+ causes_check(king, Color, C1, R1, NextCol, R1),
-    \+ causes_check(king, Color, C1, R1, C2, R2).
+    KingPathCol1 is C1 + 1, % Ô f1/f8
+    \+ causes_check(king, Color, C1, R1, KingPathCol1, R1), % Vua không đi qua ô bị chiếu (f1/f8)
+    % KingPathCol2 is C1 + 2 (ô g1/g8, chính là C2,R2)
+    \+ causes_check(king, Color, C1, R1, C2, R2). % Vua không đáp xuống ô bị chiếu (g1/g8)
 
 castle_queen_side(Color, C1, R1, C2, R2) :-
     % Vị trí vua và xe cho nhập thành bên hậu
-    (Color = white -> 
-        C1 = 5, R1 = 1, C2 = 3, R2 = 1, RookCol = 1, RookRow = 1;
-     Color = black ->
-        C1 = 5, R1 = 8, C2 = 3, R2 = 8, RookCol = 1, RookRow = 8),
+    (Color = white -> ExpectedR = 1 ; Color = black -> ExpectedR = 8),
+    C1 = 5, R1 = ExpectedR, % Vua ở vị trí e1/e8
+    C2 = 3, R2 = ExpectedR, % Vua di chuyển đến c1/c8
+    RookActualCol = 1, % Xe ở cột A
     % Vua và xe chưa di chuyển
     \+ king_moved(Color),
-    \+ rook_moved(Color, queen_side),
+    \+ rook_moved(Color, RookActualCol), % Kiểm tra xe ở cột A (1) chưa di chuyển
     % Các ô giữa vua và xe phải trống
-    clear_straight(C1, R1, RookCol, RookRow),
+    % clear_straight giữa vua (C1,R1) và vị trí gốc của xe (RookActualCol, R1)
+    clear_straight(C1, R1, RookActualCol, R1),
     % Vua không bị chiếu, không đi qua hoặc đứng ở ô bị chiếu
     \+ in_check(Color),
-    NextCol is C1 - 1,
-    \+ causes_check(king, Color, C1, R1, NextCol, R1),
-    \+ causes_check(king, Color, C1, R1, C2, R2).
+    KingPathCol1 is C1 - 1, % Ô d1/d8
+    \+ causes_check(king, Color, C1, R1, KingPathCol1, R1), % Vua không đi qua ô bị chiếu (d1/d8)
+    % KingPathCol2 is C1 - 2 (ô c1/c8, chính là C2,R2)
+    \+ causes_check(king, Color, C1, R1, C2, R2). % Vua không đáp xuống ô bị chiếu (c1/c8)
 
 % --- Kiểm tra tấn công ---
 is_attacking(pawn, white, C1, R1, C2, R2) :-

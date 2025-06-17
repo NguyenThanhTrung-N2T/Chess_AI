@@ -1,4 +1,5 @@
-:- dynamic best_move/6.
+:- consult('Chess_Helper.pl').
+:- consult('Chess_Law.pl'). % AI cần các định nghĩa luật từ Chess_Law
 
 % --- Tính heuristic đơn giản dựa vào giá trị quân cờ ---
 piece_value(pawn, 1).
@@ -11,14 +12,26 @@ piece_value(king, 1000).  % Vua có giá trị cực lớn để tránh mất
 % --- Hàm tính điểm toàn bàn cờ ---
 evaluate_board(Color, Score) :-
     findall(Value, (piece_at(_, _, Color, Piece), piece_value(Piece, Value)), MyValues),
-    findall(Value, (piece_at(_, _, OppColor, Piece), piece_value(Piece, Value), opposite_color(Color, OppColor)), OppValues),
+    opposite_color(Color, OppColor), % Lấy màu đối thủ
+    findall(Value, (piece_at(_, _, OppColor, Piece), piece_value(Piece, Value)), OppValues),
     sum_list(MyValues, MyScore),
     sum_list(OppValues, OppScore),
     Score is MyScore - OppScore.
 
 % --- Tìm tất cả nước đi hợp lệ ---
 all_legal_moves(Color, Moves) :-
-    findall((Piece, C1, R1, C2, R2), (piece_at(C1, R1, Color, Piece), legal_move(Piece, Color, C1, R1, C2, R2)), Moves).
+    findall(Move,
+            (   piece_at(C1, R1, Color, Piece),
+                % Lặp qua tất cả các ô đích có thể
+                between(1, 8, C2),
+                between(1, 8, R2),
+                (C1 \= C2 ; R1 \= R2), % Phải là một nước đi, không phải đứng yên
+                legal_move(Piece, Color, C1, R1, C2, R2), % Kiểm tra luật di chuyển cơ bản (từ Chess_Law.pl)
+                \+ causes_check(Piece, Color, C1, R1, C2, R2), % Quan trọng: Nước đi không được tự làm vua bị chiếu
+                Move = (Piece, C1, R1, C2, R2)
+            ),
+            RawMoves),
+    sort(RawMoves, Moves). % sort để loại bỏ trùng lặp (nếu có) và chuẩn hóa
 
 % --- Di chuyển giả lập ---
 simulate_move(Piece, Color, C1, R1, C2, R2, Captured) :-
@@ -41,41 +54,137 @@ undo_move(Piece, Color, C1, R1, C2, R2, (C2, R2, OppColor, CapturedPiece)) :-
     assertz(piece_at(C2, R2, OppColor, CapturedPiece)),
     assertz(piece_at(C1, R1, Color, Piece)).
 
-% --- Minimax cơ bản ---
-minimax(Color, Depth, BestScore, BestMove) :-
-    minimax(Color, Depth, -10000, 10000, BestScore, BestMove).
+% --- Minimax với Alpha-Beta Pruning (biến thể NegaMax) ---
+% minimax(+Color, +Depth, +Alpha, +Beta, -Score, -Move)
+% Score: Điểm đánh giá từ góc nhìn của 'Color'.
+% Move: Nước đi tốt nhất tìm được cho 'Color' (hoặc 'none' nếu không có nước đi hợp lệ).
 
-minimax(Color, 0, Score, _) :-
-    evaluate_board(Color, Score).
+% Trường hợp cơ sở: Độ sâu bằng 0, đánh giá bàn cờ.
+minimax(Color, 0, _Alpha, _Beta, Score, none) :- !, % Chú ý: BestMove ở đây là none vì đây là nút lá
+    evaluate_board(Color, Score). % Đánh giá từ góc nhìn của người chơi hiện tại (Color)
 
+% Trường hợp đệ quy: Độ sâu > 0
 minimax(Color, Depth, Alpha, Beta, BestScore, BestMove) :-
+    Depth > 0,
+    % Tìm tất cả các nước đi thực sự hợp lệ cho người chơi hiện tại
     all_legal_moves(Color, Moves),
-    Moves \= [],
-    NextDepth is Depth - 1,
-    findall(Score-Move,
-        (
-            member((Piece, C1, R1, C2, R2), Moves),
-            simulate_move(Piece, Color, C1, R1, C2, R2, Captured),
-            opposite_color(Color, OppColor),
-            minimax(OppColor, NextDepth, OppScore, _),
-            Score is -OppScore,
-            undo_move(Piece, Color, C1, R1, C2, R2, Captured),
-            Move = (Piece, C1, R1, C2, R2)
-        ), ScoredMoves),
-    sort(ScoredMoves, SortedMoves),
-    reverse(SortedMoves, [BestScore-BestMove | _]).
+    
+    (Moves == [] ->
+        % Không có nước đi hợp lệ cho Color
+        ( in_check(Color) -> % Kiểm tra xem có phải chiếu bí không (sử dụng in_check từ Chess_Law)
+            % Chiếu bí: Điểm rất thấp cho người chơi hiện tại.
+            % Cộng thêm Depth vào điểm để ưu tiên chiếu bí ở độ sâu lớn hơn một chút (trì hoãn điều không thể tránh khỏi).
+            BestScore is -10000 - Depth, % Sử dụng một số âm lớn
+            BestMove = none % Không có nước đi nào
+        ; % Đó là hết nước đi (stalemate)
+            % Hết nước đi: Điểm là 0 (hòa)
+            BestScore is 0,
+            BestMove = none % Không có nước đi nào
+        )
+    ; % Có các nước đi hợp lệ
+        % Khởi tạo điểm tốt nhất với giá trị rất thấp, và nước đi tốt nhất là none
+        InitialBestScore is -20001, % Thấp hơn bất kỳ điểm vật chất + điểm chiếu bí nào có thể có
+        InitialBestMove = none,
+        
+        % Xử lý các nước đi với cắt tỉa Alpha-Beta
+        opposite_color(Color, OppColor),
+        NextDepth is Depth - 1,
+        
+        % Gọi vị từ trợ giúp để lặp qua các nước đi và tìm nước tốt nhất
+        process_moves(Moves, Color, OppColor, NextDepth, Alpha, Beta, InitialBestScore, InitialBestMove, BestScore, BestMove)
+    ).
 
-% --- Tìm nước đi tốt nhất theo cấp độ ---
-find_best_move(Color, Level, Piece, C1, R1, C2, R2) :-
-    (Level = easy -> random_move(Color, Piece, C1, R1, C2, R2);
-     Level = medium -> minimax(Color, 2, _, (Piece, C1, R1, C2, R2));
-     Level = hard -> minimax(Color, 4, _, (Piece, C1, R1, C2, R2))).
+% process_moves(+MovesList, +PlayerColor, +OpponentColor, +CurrentDepth, +Alpha, +Beta, +CurrentBestScoreSoFar, +CurrentBestMoveSoFar, -FinalBestScore, -FinalBestMove)
+% Vị từ trợ giúp cho minimax để lặp qua các nước đi với Alpha-Beta.
+
+% Trường hợp cơ sở: Không còn nước đi nào để xử lý
+process_moves([], _PlayerColor, _OpponentColor, _CurrentDepth, _Alpha, _Beta, CurrentBestScoreSoFar, CurrentBestMoveSoFar, CurrentBestScoreSoFar, CurrentBestMoveSoFar).
+
+% Trường hợp đệ quy: Xử lý phần đầu của danh sách nước đi
+process_moves([(Piece, C1, R1, C2, R2) | RestMoves], PlayerColor, OpponentColor, CurrentDepth, Alpha, Beta, CurrentBestScoreSoFar, CurrentBestMoveSoFar, FinalBestScore, FinalBestMove) :-
+    CurrentMove = (Piece, C1, R1, C2, R2),
+    
+    % Mô phỏng nước đi hiện tại
+    simulate_move(Piece, PlayerColor, C1, R1, C2, R2, Captured),
+    
+    % Gọi đệ quy cho đối thủ. Alpha và Beta được đảo ngược và đổi dấu.
+    NewAlphaForOpponent is -Beta,
+    NewBetaForOpponent is -Alpha,
+    minimax(OpponentColor, CurrentDepth, NewAlphaForOpponent, NewBetaForOpponent, OpponentRawScore, _OpponentMove), % _OpponentMove không dùng ở đây
+    
+    % Hoàn tác nước đi đã mô phỏng
+    undo_move(Piece, PlayerColor, C1, R1, C2, R2, Captured),
+
+    % Tính điểm cho nước đi này từ góc nhìn của PlayerColor (NegaMax)
+    ValueForThisMove is -OpponentRawScore,
+
+    % Cập nhật điểm và nước đi tốt nhất tìm được cho đến nay
+    ( ValueForThisMove > CurrentBestScoreSoFar ->
+        UpdatedBestScore = ValueForThisMove,
+        UpdatedBestMove = CurrentMove,
+        UpdatedAlpha = max(Alpha, UpdatedBestScore) % Cập nhật Alpha
+    ;
+        UpdatedBestScore = CurrentBestScoreSoFar,
+        UpdatedBestMove = CurrentBestMoveSoFar,
+        UpdatedAlpha = Alpha % Alpha giữ nguyên
+    ),
+
+    % Kiểm tra cắt tỉa Beta
+    ( UpdatedBestScore >= Beta ->
+        % Cắt tỉa Beta: Nước đi này quá tốt cho người chơi hiện tại,
+        % đối thủ sẽ ngăn chặn nhánh này xảy ra.
+        % Chúng ta có thể cắt tỉa phần còn lại của các nước đi ở nút này.
+        FinalBestScore = UpdatedBestScore, % Trả về điểm tìm được cho đến nay
+        FinalBestMove = UpdatedBestMove
+        % Đệ quy dừng ở đây, RestMoves không được xử lý.
+    ;
+        % Không cắt tỉa, tiếp tục xử lý các nước đi còn lại
+        process_moves(RestMoves, PlayerColor, OpponentColor, CurrentDepth, UpdatedAlpha, Beta, UpdatedBestScore, UpdatedBestMove, FinalBestScore, FinalBestMove)
+    ).
+
+% Lần gọi ban đầu cho minimax từ bên ngoài
+% minimax(+Color, +Depth, -Score, -Move)
+minimax(Color, Depth, Score, Move) :-
+    % Alpha ban đầu là âm vô cùng, Beta ban đầu là dương vô cùng
+    minimax(Color, Depth, -20001, 20001, Score, Move). % Sử dụng các giá trị ngoài phạm vi điểm có thể có
 
 % --- Nước đi ngẫu nhiên ---
+% random_move(+Color, -Piece, -C1, -R1, -C2, -R2)
+% Thành công nếu tìm thấy một nước đi hợp lệ ngẫu nhiên, thất bại nếu không.
 random_move(Color, Piece, C1, R1, C2, R2) :-
     all_legal_moves(Color, Moves),
-    random_member((Piece, C1, R1, C2, R2), Moves).
+    ( Moves == [] ->
+        fail % Không có nước đi hợp lệ nào để chọn
+    ;
+        random_member((Piece, C1, R1, C2, R2), Moves)
+    ).
 
-% --- Đối màu ---
-opposite_color(white, black).
-opposite_color(black, white).
+% --- Tìm nước đi tốt nhất theo cấp độ ---
+% find_best_move(+Color, +Level, -Piece, -C1, -R1, -C2, -R2)
+% Thành công nếu tìm thấy một nước đi, thất bại nếu không.
+find_best_move(Color, Level, FinalPiece, FinalC1, FinalR1, FinalC2, FinalR2) :-
+    % Đầu tiên, kiểm tra xem có BẤT KỲ nước đi hợp lệ nào cho màu hiện tại không.
+    % Nếu không, trò chơi kết thúc (chiếu bí hoặc hết nước đi), và AI nên thất bại.
+    all_legal_moves(Color, Moves),
+    ( Moves == [] ->
+        fail % Không có nước đi hợp lệ, AI không thể di chuyển, báo hiệu thất bại cho Python
+    ; % Có các nước đi hợp lệ, tiếp tục dựa trên cấp độ
+        ( Level = easy ->
+            % Cấp độ dễ: Chọn một nước đi hợp lệ ngẫu nhiên
+            % random_move đã kiểm tra Moves \= [] bên trong nó, nhưng ở đây chúng ta đã biết Moves không rỗng.
+            random_member((FinalPiece, FinalC1, FinalR1, FinalC2, FinalR2), Moves)
+        ; % Cấp độ trung bình hoặc khó: Sử dụng Minimax
+            (Level = medium -> Depth = 2 ; Depth = 4),
+            % Gọi thuật toán Minimax (phiên bản có 4 tham số)
+            minimax(Color, Depth, _Score, BestMoveFound), % _Score không dùng ở đây
+            % Minimax nên trả về một tuple nước đi hoặc 'none'
+            ( BestMoveFound == none ->
+                % Trường hợp này lý tưởng không nên xảy ra nếu all_legal_moves không rỗng,
+                % nhưng để đề phòng, thất bại nếu minimax trả về none.
+                % Điều này có thể xảy ra nếu có lỗi logic trong minimax khi xử lý nút gốc.
+                fail
+            ; % Minimax tìm thấy một nước đi
+                BestMoveFound = (FinalPiece, FinalC1, FinalR1, FinalC2, FinalR2) % Hợp nhất nước đi tìm được
+            )
+        )
+    ).
