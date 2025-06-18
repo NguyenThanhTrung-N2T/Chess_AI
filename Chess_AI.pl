@@ -12,7 +12,7 @@ piece_value(king, 1000).  % Vua có giá trị cực lớn để tránh mất
 % --- Hàm tính điểm toàn bàn cờ ---
 evaluate_board(Color, Score) :-
     findall(Value, (piece_at(_, _, Color, Piece), piece_value(Piece, Value)), MyValues),
-    opposite_color(Color, OppColor), % Lấy màu đối thủ
+    opponent_color(Color, OppColor), % SỬA: Sử dụng opponent_color từ Chess_Helper.pl
     findall(Value, (piece_at(_, _, OppColor, Piece), piece_value(Piece, Value)), OppValues),
     sum_list(MyValues, MyScore),
     sum_list(OppValues, OppScore),
@@ -87,7 +87,7 @@ minimax(Color, Depth, Alpha, Beta, BestScore, BestMove) :-
         InitialBestMove = none,
         
         % Xử lý các nước đi với cắt tỉa Alpha-Beta
-        opposite_color(Color, OppColor),
+        opponent_color(Color, OppColor), % SỬA: Sử dụng opponent_color từ Chess_Helper.pl
         NextDepth is Depth - 1,
         
         % Gọi vị từ trợ giúp để lặp qua các nước đi và tìm nước tốt nhất
