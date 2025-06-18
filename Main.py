@@ -5,7 +5,10 @@ from AI import ChessAI  # Import lớp AI của bạn
 from pyswip import Prolog
 
 prolog = Prolog()
-prolog.consult("Chess_Law.pl")  # Dùng luật cờ viết bằng Prolog
+# Nạp tất cả các file Prolog cần thiết. Thứ tự có thể quan trọng.
+prolog.consult("Chess_Helper.pl")  # Nếu Chess_Law.pl hoặc Chess_AI.pl dùng vị từ từ đây
+prolog.consult("Chess_Law.pl")
+prolog.consult("Chess_AI.pl")    # Để AI có thể hoạt động
 
 screen_w = 1000
 screen_h = 700
@@ -266,8 +269,14 @@ def result_popup(screen, board):
 
 # reset facts trong Prolog khi bắt đầu trò chơi mới
 def reset_prolog():
-    Board.clear_board()
-    print("Reset Prolog done.")
+    """Reset các fact động trong Prolog về trạng thái ban đầu."""
+    list(prolog.query("retractall(last_move(_,_,_,_)), assertz(last_move(0,0,0,0))"))
+    list(prolog.query("retractall(king_moved(_))"))
+    list(prolog.query("retractall(rook_moved(_,_))")) # Đảm bảo arity đúng, ví dụ rook_moved/2
+    list(prolog.query("retractall(halfmove_clock(_)), assertz(halfmove_clock(0))"))
+    list(prolog.query("retractall(board_history(_)), assertz(board_history([]))")) # Đảm bảo arity đúng, ví dụ board_history/1
+    # piece_at/4 sẽ được xử lý bởi board.assert_board_state() khi board mới được tạo.
+    print("Dynamic Prolog facts (last_move, king_moved, etc.) reset by Main.py's reset_prolog function.")
 
 def main():
     pygame.init()
@@ -291,20 +300,23 @@ def main():
     if mode is None:
         return
 
-    board = Board(screen, cell_size)  # Tạo bàn cờ mới
+    board = Board(screen, cell_size, prolog_engine=prolog)  # Truyền prolog engine cho Board
 
     if mode == "easy":
         board.ai_level = 1
         board.play_with_ai = True
-        board.ai = ChessAI(level=1)
+        board.ai = ChessAI(prolog_engine=prolog, level=1) # Truyền prolog engine cho AI
     elif mode == "normal":
         board.ai_level = 2
         board.play_with_ai = True
-        board.ai = ChessAI(level=2)
+        board.ai = ChessAI(prolog_engine=prolog, level=2) # Truyền prolog engine cho AI
     elif mode == "hard":
         board.ai_level = 3
         board.play_with_ai = True
-        board.ai = ChessAI(level=3)
+        board.ai = ChessAI(prolog_engine=prolog, level=3) # Truyền prolog engine cho AI
+    else: # Chế độ PvP hoặc các chế độ không có AI
+        board.play_with_ai = False
+        board.ai = None
 
     x_start_btn = 760
     y_start_btn = 200
@@ -397,26 +409,32 @@ def main():
                 elif btn_new.collidepoint(mouse_x, mouse_y):
                     # Click SOUND
                     click_sound.play()
-
                     # reset Prolog facts
                     reset_prolog()
 
                     mode = draw_menu(screen)
+                    if mode is None: # Nếu người dùng thoát khỏi menu
+                        running = False # Kết thúc game loop chính
+                        continue
+
                     back_clicked = False
                     # Reset lại bàn cờ với chế độ mới
-                    board = Board(screen, cell_size)
+                    board = Board(screen, cell_size, prolog_engine=prolog) # Tạo Board mới
                     if mode == "easy":
                         board.ai_level = 1
                         board.play_with_ai = True
-                        board.ai = ChessAI(level=1)
+                        board.ai = ChessAI(prolog_engine=prolog, level=1)
                     elif mode == "normal":
                         board.ai_level = 2
                         board.play_with_ai = True
-                        board.ai = ChessAI(level=2)
+                        board.ai = ChessAI(prolog_engine=prolog, level=2)
                     elif mode == "hard":
                         board.ai_level = 3
                         board.play_with_ai = True
-                        board.ai = ChessAI(level=3)
+                        board.ai = ChessAI(prolog_engine=prolog, level=3)
+                    else: # Chế độ PvP
+                        board.play_with_ai = False
+                        board.ai = None
                     popup_y = popup_start_y
                 elif btn_undo.collidepoint(mouse_x, mouse_y):
                     board.undo_move()  # Hoàn tác nước đi
@@ -424,6 +442,23 @@ def main():
                     popup_y = popup_start_y
                 elif btn_reset.collidepoint(mouse_x, mouse_y):
                     board.reset_game()  # Đặt lại trò chơi
+                    # Click SOUND
+                    click_sound.play()
+                    # Reset Prolog facts động
+                    reset_prolog()
+                    # Tạo lại Board, giữ nguyên chế độ hiện tại
+                    # Biến 'mode' vẫn giữ giá trị từ lần chọn chế độ trước đó
+                    current_mode = mode # Giữ lại mode hiện tại
+                    board = Board(screen, cell_size, prolog_engine=prolog) # Tạo lại Board
+                    # Thiết lập lại AI nếu cần, dựa trên current_mode
+                    if current_mode == "easy":
+                        board.ai_level = 1; board.play_with_ai = True; board.ai = ChessAI(prolog_engine=prolog, level=1)
+                    elif current_mode == "normal":
+                        board.ai_level = 2; board.play_with_ai = True; board.ai = ChessAI(prolog_engine=prolog, level=2)
+                    elif current_mode == "hard":
+                        board.ai_level = 3; board.play_with_ai = True; board.ai = ChessAI(prolog_engine=prolog, level=3)
+                    else: # PvP
+                        board.play_with_ai = False; board.ai = None
                     back_clicked = False
                     popup_y = popup_start_y
 
