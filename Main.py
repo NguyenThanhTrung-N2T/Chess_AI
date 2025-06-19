@@ -441,24 +441,13 @@ def main():
                     back_clicked = False
                     popup_y = popup_start_y
                 elif btn_reset.collidepoint(mouse_x, mouse_y):
-                    board.reset_game()  # Đặt lại trò chơi
                     # Click SOUND
                     click_sound.play()
-                    # Reset Prolog facts động
-                    reset_prolog()
-                    # Tạo lại Board, giữ nguyên chế độ hiện tại
-                    # Biến 'mode' vẫn giữ giá trị từ lần chọn chế độ trước đó
-                    current_mode = mode # Giữ lại mode hiện tại
-                    board = Board(screen, cell_size, prolog_engine=prolog) # Tạo lại Board
-                    # Thiết lập lại AI nếu cần, dựa trên current_mode
-                    if current_mode == "easy":
-                        board.ai_level = 1; board.play_with_ai = True; board.ai = ChessAI(prolog_engine=prolog, level=1)
-                    elif current_mode == "normal":
-                        board.ai_level = 2; board.play_with_ai = True; board.ai = ChessAI(prolog_engine=prolog, level=2)
-                    elif current_mode == "hard":
-                        board.ai_level = 3; board.play_with_ai = True; board.ai = ChessAI(prolog_engine=prolog, level=3)
-                    else: # PvP
-                        board.play_with_ai = False; board.ai = None
+                    # Gọi hàm reset của Board, hàm này sẽ tự xử lý việc reset Prolog facts
+                    # và giữ nguyên chế độ chơi (ai_level, play_with_ai, ai object)
+                    board.reset_game() 
+                    # Không cần tạo lại đối tượng Board hay AI ở đây nữa,
+                    # vì board.reset_game() sẽ xử lý nội bộ.
                     back_clicked = False
                     popup_y = popup_start_y
 

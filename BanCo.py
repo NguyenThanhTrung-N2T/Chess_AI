@@ -62,7 +62,17 @@ class Board:
         self.play_with_ai = False # Sẽ được đặt từ Main.py
         self.ai = None # Sẽ được đặt từ Main.py
         self.ai_level = 1 # Mặc định
-        self.ai_color_char = 'b' # Mặc định AI chơi quân đen
+        self.ai_color_char = 'b' # Mặc định AI chơi quân đen (có thể thay đổi nếu muốn AI chơi Trắng)
+
+    def reset_prolog_dynamic_facts(self):
+        """Reset các fact động trong Prolog về trạng thái ban đầu."""
+        # Sử dụng self.prolog_engine
+        list(self.prolog_engine.query("retractall(last_move(_,_,_,_)), assertz(last_move(0,0,0,0))"))
+        list(self.prolog_engine.query("retractall(king_moved(_))"))
+        list(self.prolog_engine.query("retractall(rook_moved(_,_))"))
+        list(self.prolog_engine.query("retractall(halfmove_clock(_)), assertz(halfmove_clock(0))"))
+        list(self.prolog_engine.query("retractall(board_history(_)), assertz(board_history([]))"))
+        print("Dynamic Prolog facts (last_move, king_moved, etc.) reset by Board's reset_prolog_dynamic_facts.")
 
     def init_board_state(self):
         # w_ = quân trắng, b_ = quân đen, None = ô trống
@@ -560,16 +570,20 @@ class Board:
     #         return True
     #     return False
 
-    # # Reset game state
-    # def reset_game(self):
-    #     self.chess_board = chess.Board()
-    #     self.move_history = []
-    #     self.selected_square = None
-    #     self.king_in_check_square = None
-    #     self.status_message = ""
-    #     self.game_over = False
-    #     # Game start sound
-    #     game_start_sound.play()
+    # Reset game state
+    def reset_game(self):
+        self.board_state = self.init_board_state() # Reset trạng thái bàn cờ Python
+        self.reset_prolog_dynamic_facts() # Reset các fact động của Prolog
+        self.assert_board_state() # Cập nhật Prolog với trạng thái bàn cờ mới
+
+        self.turn = "w" # Lượt đi đầu tiên luôn là Trắng
+        self.selected_square = None
+        self.in_check_square = None # Xóa trạng thái vua bị chiếu
+        self.status_message = "Turn: White" # Thông báo lượt đi ban đầu
+        self.game_over = False
+        self.move_history = [] # Xóa lịch sử nước đi
+        # Không thay đổi self.play_with_ai, self.ai, self.ai_level, self.ai_color_char
+        game_start_sound.play() # Phát âm thanh bắt đầu game mới
 
     # # Hoàn tác nước đi
     # def undo_move(self):
