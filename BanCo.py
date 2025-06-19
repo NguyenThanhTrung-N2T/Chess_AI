@@ -56,7 +56,7 @@ class Board:
             print(f"Lỗi khi truy vấn piece_at: {e}")
         self.selected_square = None
         self.move_history = []
-        self.turn = "w"
+        self.turn = "w" # 'w' for white, 'b' for black
         self.status_message = ""
         self.game_over = False
         self.highlighted_squares_prolog_coords = [] # Lưu các ô (C2,R2) Prolog cần highlight
@@ -64,6 +64,31 @@ class Board:
         self.ai = None # Sẽ được đặt từ Main.py
         self.ai_level = 1 # Mặc định
         self.ai_color_char = 'b' # Mặc định AI chơi quân đen (có thể thay đổi nếu muốn AI chơi Trắng)
+
+    # Helper methods to get Prolog dynamic facts
+    def get_prolog_fact(self, query_template, vars_to_extract):
+        try:
+            solutions = list(self.prolog_engine.query(query_template))
+            if solutions:
+                sol = solutions[0]
+                # Handle cases where a var might not be in the solution if query fails partially
+                # or if prolog returns non-deterministic results where some vars are not bound.
+                # For simple facts, this should be okay.
+                return tuple(sol.get(var) for var in vars_to_extract)
+            return None
+        except Exception as e:
+            print(f"Error getting prolog fact {query_template}: {e}")
+            return None
+
+    def get_prolog_list_fact(self, query_template, vars_to_extract):
+        results = []
+        try:
+            for sol in self.prolog_engine.query(query_template):
+                results.append(tuple(sol.get(var) for var in vars_to_extract))
+            return results
+        except Exception as e:
+            print(f"Error getting prolog list fact {query_template}: {e}")
+            return []
 
     def reset_prolog_dynamic_facts(self):
         """Reset các fact động trong Prolog về trạng thái ban đầu."""
@@ -299,6 +324,41 @@ class Board:
         to_row_py = 8 - to_row_prolog
         to_col_py = to_col_prolog - 1
 
+        # --- Capture state BEFORE the move for undo ---
+        move_data_for_history = {}
+        save_history_this_time = False
+
+        if is_ai_move: # AI luôn thực hiện một nước đi hoàn chỉnh
+            save_history_this_time = True
+        elif self.selected_square is not None: # Người chơi click lần thứ 2 (chọn ô đích)
+            # Đây là thời điểm một nước đi sắp được thực hiện
+            from_row_py_selected, _ = self.selected_square
+            # Kiểm tra xem có phải click lại quân cũ hoặc quân khác cùng màu không (đã xử lý sau)
+            # Nếu không phải các trường hợp đó, thì đây là một nỗ lực di chuyển
+            if not ( (to_row_py, to_col_py) == self.selected_square or \
+                     (self.board_state[to_row_py][to_col_py] and self.is_player_piece(self.board_state[to_row_py][to_col_py])) ):
+                save_history_this_time = True
+
+        if save_history_this_time:
+            move_data_for_history = {
+                "board_state_before_move": [row[:] for row in self.board_state], # Deep copy
+                "turn_before_move": self.turn,
+                "prolog_last_move": self.get_prolog_fact("last_move(C1,R1,C2,R2)", ['C1','R1','C2','R2']),
+                "prolog_king_moved": self.get_prolog_list_fact("king_moved(ColorAtom)", ['ColorAtom']),
+                "prolog_rook_moved": self.get_prolog_list_fact("rook_moved(ColorAtom, Col)", ['ColorAtom', 'Col']),
+                "prolog_halfmove_clock": self.get_prolog_fact("halfmove_clock(N)", ['N']),
+                "prolog_board_history_raw": self.get_prolog_fact("board_history(List)", ['List']),
+                "in_check_square_before_move": self.in_check_square,
+                "status_message_before_move": self.status_message,
+                "game_over_before_move": self.game_over,
+                "highlighted_squares_before_move": list(self.highlighted_squares_prolog_coords) # Deep copy
+            }
+            if move_data_for_history["prolog_board_history_raw"] and \
+               isinstance(move_data_for_history["prolog_board_history_raw"][0], list):
+                move_data_for_history["prolog_board_history"] = list(move_data_for_history["prolog_board_history_raw"][0]) # Deep copy
+            else:
+                move_data_for_history["prolog_board_history"] = []
+
         current_player_color_prolog = self.current_color() # "white" hoặc "black"
 
         if is_ai_move:
@@ -346,6 +406,9 @@ class Board:
         print(f"Prolog move_piece query: {query} -> Result: {len(result)>0}")
 
         if result: # move_piece thành công trong Prolog
+            if save_history_this_time: # Chỉ thêm vào history nếu đó là một nỗ lực di chuyển hoàn chỉnh và thành công
+                self.move_history.append(move_data_for_history)
+
             # Cập nhật board_state của Python dựa trên nước đi thành công của Prolog
             py_from_row, py_from_col = 8 - from_row_prolog_move, from_col_prolog_move - 1
             
@@ -623,24 +686,107 @@ class Board:
         game_start_sound.play() # Phát âm thanh bắt đầu game mới
 
     # # Hoàn tác nước đi
-    # def undo_move(self):
-    #     if self.move_history:
-    #         self.move_history.pop()
-    #         self.chess_board.pop()
-    #         self.selected_square = None
+    def undo_move(self):
+        if not self.move_history:
+            print("No moves to undo.")
+            self.status_message = "No moves to undo." # Cập nhật status message
+            return
 
-    #         if self.chess_board.is_check():
-    #             king_sq = self.chess_board.king(self.chess_board.turn)
-    #             row_check = 7 - chess.square_rank(king_sq)
-    #             col_check = chess.square_file(king_sq)
-    #             self.king_in_check_square = (row_check, col_check)
-    #             self.status_message = ">> Your king is in check!"
-    #         else:
-    #             self.king_in_check_square = None
-    #             self.status_message = ""
-    #     # Click SOUND
-    #     click_sound.play()
-    #     self.game_over = False
+        num_undos = 1
+        if self.play_with_ai:
+            # Nếu đang chơi với AI:
+            # - Nếu AI vừa đi (tức là self.turn là của người chơi), và có ít nhất 2 nước đi trong lịch sử,
+            #   thì undo 2 lần (nước của AI và nước của người chơi trước đó).
+            # - Ngược lại (người chơi vừa đi, hoặc chỉ còn 1 nước trong lịch sử), undo 1 lần.
+            if self.turn != self.ai_color_char and len(self.move_history) >= 2:
+                num_undos = 2
+            # else: num_undos vẫn là 1
+
+        if len(self.move_history) < num_undos:
+            if self.play_with_ai and len(self.move_history) == 1 and num_undos == 2:
+                num_undos = 1 # Nếu muốn undo 2 (AI) nhưng chỉ còn 1, thì undo 1
+            elif len(self.move_history) < num_undos:
+                print(f"Not enough history to undo {num_undos} moves. Only {len(self.move_history)} available.")
+                self.status_message = "Not enough history to undo."
+                return
+
+        restored_state_info_final = None # Sẽ lưu trạng thái của lần undo cuối cùng
+
+        for i in range(num_undos):
+            if not self.move_history: break # An toàn
+            
+            last_state_info = self.move_history.pop()
+            if i == num_undos -1 : # Lần undo cuối cùng trong vòng lặp
+                 restored_state_info_final = last_state_info
+
+            # Restore Python board state
+            self.board_state = last_state_info["board_state_before_move"] # Đã là deep copy
+            self.turn = last_state_info["turn_before_move"]
+            self.in_check_square = last_state_info["in_check_square_before_move"]
+            self.game_over = last_state_info["game_over_before_move"]
+            self.highlighted_squares_prolog_coords = last_state_info.get("highlighted_squares_before_move", [])
+            # self.status_message sẽ được đặt lại sau cùng
+
+            # Reset current Prolog dynamic facts
+            list(self.prolog_engine.query("retractall(last_move(_,_,_,_))"))
+            list(self.prolog_engine.query("retractall(king_moved(_))"))
+            list(self.prolog_engine.query("retractall(rook_moved(_,_))"))
+            list(self.prolog_engine.query("retractall(halfmove_clock(_))"))
+            list(self.prolog_engine.query("retractall(board_history(_))"))
+            # piece_at sẽ được assert_board_state xử lý (nó có retractall riêng)
+
+            # Assert the restored board state to Prolog
+            self.assert_board_state()
+
+            # Assert the specific dynamic facts from history
+            if last_state_info["prolog_last_move"]:
+                c1,r1,c2,r2 = last_state_info["prolog_last_move"]
+                if all(v is not None for v in [c1,r1,c2,r2]):
+                    list(self.prolog_engine.query(f"assertz(last_move({c1},{r1},{c2},{r2}))"))
+                else:
+                     list(self.prolog_engine.query("assertz(last_move(0,0,0,0))"))
+            else:
+                list(self.prolog_engine.query("assertz(last_move(0,0,0,0))"))
+
+            for color_tuple in last_state_info.get("prolog_king_moved", []):
+                color = color_tuple[0]
+                if color: list(self.prolog_engine.query(f"assertz(king_moved({color}))"))
+
+            for color_col_tuple in last_state_info.get("prolog_rook_moved", []):
+                color_atom, col_val = color_col_tuple # Sửa tên biến để rõ ràng
+                if color_atom and col_val: list(self.prolog_engine.query(f"assertz(rook_moved({color_atom},{col_val}))"))
+
+            if last_state_info["prolog_halfmove_clock"] and last_state_info["prolog_halfmove_clock"][0] is not None:
+                n = last_state_info["prolog_halfmove_clock"][0]
+                list(self.prolog_engine.query(f"assertz(halfmove_clock({n}))"))
+            else:
+                list(self.prolog_engine.query("assertz(halfmove_clock(0))"))
+
+            board_hist_list = last_state_info.get("prolog_board_history", [])
+            if board_hist_list:
+                list(self.prolog_engine.query(f"assertz(board_history({board_hist_list}))"))
+            else:
+                list(self.prolog_engine.query("assertz(board_history([]))"))
+
+        self.highlighted_squares_prolog_coords = [] # Clear highlights after undo
+        self.selected_square = None # Bỏ chọn quân sau khi undo
+
+        # Sau khi hoàn tất tất cả các lần undo, cập nhật trạng thái game và thông báo
+        if restored_state_info_final: # Nếu có ít nhất một lần undo thành công
+            if not self.game_over: # Nếu game không ở trạng thái kết thúc sau khi undo
+                self.check_game_status_after_move(self.current_color()) # Kiểm tra cho người chơi hiện tại
+                if not self.game_over: # Nếu vẫn không kết thúc sau khi kiểm tra
+                    self.status_message = f"Turn: {'White' if self.turn == 'w' else 'Black'}"
+                # Nếu self.game_over là true sau check_game_status_after_move, status_message đã được đặt bởi nó
+            else: # Nếu game ở trạng thái kết thúc sau khi undo (ví dụ: undo về chiếu bí)
+                self.status_message = restored_state_info_final["status_message_before_move"]
+                # Có thể cần gọi lại check_game_status để đảm bảo in_check_square được cập nhật đúng
+                # nếu status_message là một dạng "Checkmate" hoặc "Check"
+                if "checkmate" in self.status_message.lower() or "check!" in self.status_message.lower():
+                     self.check_game_status_after_move(self.current_color())
+
+        print(f"{num_undos} move(s) undone.")
+        click_sound.play()
 
     # # Hiển thị menu phong cấp khi người chơi đi quân tốt đến hàng cuối
     def show_promotion_menu(self):

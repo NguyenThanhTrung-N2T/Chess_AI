@@ -437,9 +437,11 @@ def main():
                         board.ai = None
                     popup_y = popup_start_y
                 elif btn_undo.collidepoint(mouse_x, mouse_y):
-                    board.undo_move()  # Hoàn tác nước đi
-                    back_clicked = False
-                    popup_y = popup_start_y
+                    board.undo_move()  # Hàm board.undo_move() sẽ tự xử lý âm thanh
+                    # Nếu game không còn kết thúc sau khi undo, reset trạng thái popup
+                    if not board.game_over:
+                        back_clicked = False
+                        popup_y = popup_start_y # Đảm bảo popup ẩn đi
                 elif btn_reset.collidepoint(mouse_x, mouse_y):
                     # Click SOUND
                     click_sound.play()
