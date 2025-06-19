@@ -156,6 +156,19 @@ draw_by_threefold_repetition :-
 square_color(C, R, white) :- Mod is (C + R) mod 2, Mod =:= 0.
 square_color(C, R, black) :- Mod is (C + R) mod 2, Mod =:= 1.
 
+% --- Tìm tất cả các ô đích hợp lệ cho một quân cờ cụ thể ---
+% all_legal_moves_for_piece(+Piece, +Color, +C1, +R1, -ListOfTargetSquares)
+% ListOfTargetSquares sẽ là danh sách các tuple (C2, R2)
+all_legal_moves_for_piece(Piece, Color, C1, R1, TargetSquares) :-
+    findall((C2, R2),
+            (   between(1, 8, C2),
+                between(1, 8, R2),
+                (C1 \= C2 ; R1 \= R2), % Phải là một nước đi, không phải đứng yên
+                legal_move(Piece, Color, C1, R1, C2, R2), % Kiểm tra luật di chuyển cơ bản
+                \+ causes_check(Piece, Color, C1, R1, C2, R2) % Nước đi không được tự làm vua bị chiếu
+            ),
+            TargetSquares).
+
 % Lấy danh sách các quân cờ còn lại trừ vua
 get_remaining_pieces(RemainingPieces) :-
     findall((C, R, Color, Piece), (piece_at(C, R, Color, Piece), Piece \= king), RemainingPieces).

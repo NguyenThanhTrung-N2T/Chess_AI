@@ -59,6 +59,7 @@ class Board:
         self.turn = "w"
         self.status_message = ""
         self.game_over = False
+        self.highlighted_squares_prolog_coords = [] # Lưu các ô (C2,R2) Prolog cần highlight
         self.play_with_ai = False # Sẽ được đặt từ Main.py
         self.ai = None # Sẽ được đặt từ Main.py
         self.ai_level = 1 # Mặc định
@@ -120,6 +121,15 @@ class Board:
                 if self.selected_square == (row, col):
                     pygame.draw.rect(self.screen, selected_square_color, rect, border_thickness)
 
+                # Vẽ highlight cho các nước đi hợp lệ
+                prolog_row_to_check = 8 - row  # Chuyển đổi từ Py row sang Prolog row
+                prolog_col_to_check = col + 1  # Chuyển đổi từ Py col sang Prolog col
+                
+                if (prolog_col_to_check, prolog_row_to_check) in self.highlighted_squares_prolog_coords:
+                    pygame.draw.rect(self.screen, highlight_square_color, rect, border_thickness)
+        
+
+
         # Vẽ thông báo trạng thái
         if self.status_message:
             msg = status_msg_font.render(self.status_message, True, (255, 0, 0))
@@ -140,43 +150,6 @@ class Board:
         color_code, piece_type = piece_str.split("_")  # e  .g. "w_rook" -> ["w", "rook"]
         color = "white" if color_code == "w" else "black"
         return piece_type, color
-    
-
-    # Vẽ các ô hợp lệ cho quân cờ đã chọn ( đang fix )
-    # def highlight_squares(self, offset_x=0, offset_y=0):
-    #     if self.selected_square is None:
-    #         return  # Chưa chọn quân thì không highlight
-
-    #     from_row, from_col = self.selected_square
-    #     piece = self.board_state[from_row][from_col]
-
-    #     if not piece:
-    #         return  # Tránh lỗi nếu ô được chọn không có quân
-
-    #     piece_type, color = self.parse_piece(piece)
-
-    #     # Tọa độ Prolog
-    #     from_row_prolog = 8 - from_row
-    #     from_col_prolog = from_col + 1
-
-    #     # Duyệt toàn bộ bàn cờ
-    #     for to_row in range(8):
-    #         for to_col in range(8):
-    #             to_row_prolog = 8 - to_row
-    #             to_col_prolog = to_col + 1
-
-    #             # Bỏ qua nếu là chính ô đang đứng
-    #             if from_row == to_row and from_col == to_col:
-    #                 continue
-
-    #             # Gọi Prolog để kiểm tra xem có đi hợp lệ không
-    #             query = f"move_piece({piece_type}, {color}, {from_col_prolog}, {from_row_prolog}, {to_col_prolog}, {to_row_prolog})"
-    #             result = list(prolog.query(query))
-
-    #             if result:
-    #                 # Nếu hợp lệ thì vẽ viền
-    #                 rect = pygame.Rect(offset_x + to_col * self.cell_size, offset_y + to_row * self.cell_size, self.cell_size, self.cell_size)
-    #                 pygame.draw.rect(self.screen, highlight_square_color, rect, border_thickness)
 
             
     # Kiểm tra xem quân cờ có phải là quân của người chơi hiện tại hay không
@@ -212,6 +185,63 @@ class Board:
                     except Exception as e:
                         print(f"Lỗi khi assert piece_at: {query} - {e}")
 
+    def update_highlighted_squares(self):
+        """Cập nhật danh sách các ô cần highlight dựa trên quân cờ đang được chọn."""
+        self.highlighted_squares_prolog_coords = [] # Xóa highlight cũ
+        if self.selected_square is None:
+            return
+
+        from_row_py, from_col_py = self.selected_square
+        piece_str_on_py_board = self.board_state[from_row_py][from_col_py]
+
+        if not piece_str_on_py_board:
+            return
+
+        piece_type, color_prolog = self.parse_piece(piece_str_on_py_board)
+        from_col_prolog = from_col_py + 1
+        from_row_prolog = 8 - from_row_py
+
+        # Đảm bảo Prolog có trạng thái bàn cờ hiện tại *TRƯỚC KHI* truy vấn
+        self.assert_board_state()
+
+        query = f"all_legal_moves_for_piece({piece_type}, {color_prolog}, {from_col_prolog}, {from_row_prolog}, TargetSquares)."
+        try:
+            solutions = list(self.prolog_engine.query(query))
+            if solutions and solutions[0] and 'TargetSquares' in solutions[0] and isinstance(solutions[0]['TargetSquares'], list):
+                raw_targets = solutions[0]['TargetSquares']
+                processed_targets = []
+                # Trả về list dạng [(C, R), (C, R), ...] 
+                for target_item in raw_targets:
+                    if isinstance(target_item, tuple) and len(target_item) == 2:
+                        # Nếu là 1 cặp tupple (C, R) thì thêm vào list
+                        processed_targets.append(target_item)
+                    elif isinstance(target_item, str):
+                        # If it's a string representation, try to parse it
+                        try:
+                            # Attempt to parse string format like ',(C, R)' or '(C, R)'
+                            # Remove leading/trailing junk, then split by comma
+                            cleaned_str = target_item.replace("(", "").replace(")", "").replace("'", "")
+                            if cleaned_str.startswith(','): # Handle leading comma if present
+                                cleaned_str = cleaned_str[1:]
+                            parts = cleaned_str.split(',')
+                            if len(parts) == 2:
+                                col = int(parts[0].strip())
+                                row = int(parts[1].strip())
+                                processed_targets.append((col, row))
+                            else:
+                                print(f"DEBUG: Could not parse target string into tuple (unexpected parts): {target_item} -> {parts}") # DEBUG
+                        except ValueError as e:
+                            print(f"DEBUG: Error converting parts to int for target string {target_item}: {e}") # DEBUG
+                        except Exception as e:
+                            print(f"DEBUG: Unexpected error parsing target string {target_item}: {e}") # DEBUG
+                    else:
+                         print(f"DEBUG: Unexpected type in TargetSquares list: {type(target_item)} - {target_item}") # DEBUG
+
+                self.highlighted_squares_prolog_coords = processed_targets
+            else:
+                self.highlighted_squares_prolog_coords = [] # Đảm bảo reset nếu không có kết quả
+        except Exception as e:
+            self.highlighted_squares_prolog_coords = []
 
     def handle_click(self, row_prolog, col_prolog):
         # row_prolog, col_prolog là tọa độ Prolog của ô được click
@@ -281,10 +311,12 @@ class Board:
                 piece_on_square = self.board_state[to_row_py][to_col_py] # to_row_py, to_col_py là ô vừa click
                 if piece_on_square and self.is_player_piece(piece_on_square):
                     self.selected_square = (to_row_py, to_col_py)
+                    self.update_highlighted_squares() # Cập nhật highlight
                 return # Đợi click thứ hai (ô đích)
             else:
                 # Người chơi đã chọn quân và giờ chọn ô đích
                 from_row_py_selected, from_col_py_selected = self.selected_square
+                # self.highlighted_squares_prolog_coords = [] # Xóa highlight khi chuẩn bị di chuyển
                 from_row_prolog_move = 8 - from_row_py_selected
                 from_col_prolog_move = from_col_py_selected + 1
                 
@@ -296,11 +328,13 @@ class Board:
 
                 if (to_row_py, to_col_py) == (from_row_py_selected, from_col_py_selected): # Click lại quân cũ
                     self.selected_square = None
+                    self.highlighted_squares_prolog_coords = [] # Xóa highlight
                     return
                 
                 clicked_piece_on_board = self.board_state[to_row_py][to_col_py] # Ô đích vừa click
                 if clicked_piece_on_board and self.is_player_piece(clicked_piece_on_board): # Click vào quân khác cùng màu
                     self.selected_square = (to_row_py, to_col_py) # Đổi quân chọn
+                    self.update_highlighted_squares() # Cập nhật highlight cho quân mới
                     return
 
         # Đảm bảo Prolog có trạng thái bàn cờ hiện tại trước khi thử move_piece
@@ -367,6 +401,7 @@ class Board:
 
             if not is_ai_move: # Nếu là người chơi
                 self.selected_square = None # Bỏ chọn quân
+            self.highlighted_squares_prolog_coords = [] # Xóa highlight sau khi di chuyển
 
             # Sau khi di chuyển thành công và cập nhật, kiểm tra trạng thái game cho *đối thủ*
             opponent_color_prolog = "black" if current_player_color_prolog == "white" else "white"
@@ -379,6 +414,7 @@ class Board:
             if not is_ai_move: # Chỉ hiển thị "Invalid move!" cho người chơi
                 self.status_message = "Invalid move!"
             self.selected_square = None # Bỏ chọn dù nước đi thất bại
+            self.highlighted_squares_prolog_coords = [] # Xóa highlight nếu nước đi không hợp lệ
 
     def check_game_status_after_move(self, color_to_check_for_prolog):
         """Kiểm tra trạng thái game (chiếu, chiếu bí, hết nước,...) cho màu được chỉ định."""
@@ -580,6 +616,7 @@ class Board:
         self.selected_square = None
         self.in_check_square = None # Xóa trạng thái vua bị chiếu
         self.status_message = "Turn: White" # Thông báo lượt đi ban đầu
+        self.highlighted_squares_prolog_coords = [] # Xóa highlight khi reset
         self.game_over = False
         self.move_history = [] # Xóa lịch sử nước đi
         # Không thay đổi self.play_with_ai, self.ai, self.ai_level, self.ai_color_char
