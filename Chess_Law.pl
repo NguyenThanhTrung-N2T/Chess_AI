@@ -1,23 +1,23 @@
 % Chess_Law.pl
 
-% --- Khai báo dynamic ---
+% --- Declare dynamic ---
 :- consult('Chess_Helper.pl'). % Helper nên được consult trước nếu Law dùng vị từ từ Helper
 % :- consult('Chess_AI.pl'). % AI là module riêng, không nên là dependency của Law
 :- dynamic piece_at/4.
 :- dynamic last_move/4.
-% đánh dấu khi vua và xe của màu đó đã di chuyển
+% Mark after king/rook moved
 :- dynamic king_moved/1.
 :- dynamic rook_moved/2.
-% đếm nửa nước (halfmove clock) để tính nước đi ( hòa 50 nước đi không ăn quân)
+% Count halfmove clock (Draw by 50 moves)
 :- dynamic halfmove_clock/1.
-halfmove_clock(0). % Đếm nửa nước (mỗi lần di chuyển là +1)
+halfmove_clock(0). % Count halfmove (+1 when moved)
 
 :- dynamic board_history/1.
 
-% Lưu stack lịch sử
+% Save history stack
 board_history([]).
 
-last_move(0,0,0,0). % Fact để lưu nước đi cuối cùng dùng trong en_passant
+last_move(0,0,0,0). % Fact to save lastmove to check en_passant
 
 
 % --- Pawn ---
@@ -103,7 +103,7 @@ king_move(C1, R1, C2, R2) :-
     C2 >= 1, C2 =< 8, R2 >= 1, R2 =< 8,
     (\+ piece_at(C2, R2, _, _) ; (piece_at(C2, R2, Color2, _), piece_at(C1, R1, Color1, king), Color1 \= Color2)).
 
-% --- Luật tổng quát kiểm tra nước đi hợp lệ ---
+% --- Rule to check legal moves ---
 legal_move(pawn, Color, C1, R1, C2, R2) :-
     (   pawn_move(Color, C1, R1, C2, R2) ;
         pawn_capture(Color, C1, R1, C2, R2) ;
@@ -123,11 +123,11 @@ legal_move(queen, Color, C1, R1, C2, R2) :-
     not_same_color(C2, R2, Color).
 legal_move(king, Color, C1, R1, C2, R2) :-
     ( castle_king_side(Color, C1, R1, C2, R2) ; 
-      castle_queen_side(Color, C1, R1, C2, R2) ; 
-      king_move(C1, R1, C2, R2)),
+    castle_queen_side(Color, C1, R1, C2, R2) ; 
+    king_move(C1, R1, C2, R2)),
     not_same_color(C2, R2, Color).
 
-% --- Kiểm tra quân vua bị chiếu --- ( tạm được )
+% --- Whether a king is in check --- (not bad)
 in_check(Color) :-
     opponent_color(Color, OpponentColor),
     piece_at(KingC, KingR, Color, king),
@@ -135,123 +135,121 @@ in_check(Color) :-
     is_attacking(Piece, OpponentColor, C, R, KingC, KingR),
     !.
 
-% Hết nước đi: Vua không bị chiếu nhưng không còn nước đi hợp lệ
+% --- Stalemate (king cannot go to anywhere except the current square) ---
 stalemate(Color) :-
     \+ in_check(Color),
     \+ has_legal_move(Color).
 
-% Kiểm tra hòa do 50 nước đi không ăn quân
+% --- Draw by 50 moves rule ---
 draw_by_fifty_moves :-
     halfmove_clock(N),
     N >= 100. % 100 nửa nước = 50 nước đầy đủ
 
-% Luật kiểm tra hòa lặp lại 3 lần
+% --- Draw by 3 fold repetition rule ---
 draw_by_threefold_repetition :-
     snapshot(Current),
     count_occurrences(Current, Count),
     Count >= 3.
 
-
-% Tính màu ô (đen hoặc trắng)
+% --- Return color of a cell ---
 square_color(C, R, white) :- Mod is (C + R) mod 2, Mod =:= 0.
 square_color(C, R, black) :- Mod is (C + R) mod 2, Mod =:= 1.
 
-% --- Tìm tất cả các ô đích hợp lệ cho một quân cờ cụ thể ---
+% --- Find all legal moves ---
 % all_legal_moves_for_piece(+Piece, +Color, +C1, +R1, -ListOfTargetSquares)
-% ListOfTargetSquares sẽ là danh sách các tuple (C2, R2)
+% ListOfTargetSquares will be a list of (C2, R2) tuples
 all_legal_moves_for_piece(Piece, Color, C1, R1, TargetSquares) :-
     findall((C2, R2),
             (   between(1, 8, C2),
                 between(1, 8, R2),
-                (C1 \= C2 ; R1 \= R2), % Phải là một nước đi, không phải đứng yên
-                legal_move(Piece, Color, C1, R1, C2, R2), % Kiểm tra luật di chuyển cơ bản
-                \+ causes_check(Piece, Color, C1, R1, C2, R2) % Nước đi không được tự làm vua bị chiếu
+                (C1 \= C2 ; R1 \= R2), % Has to be a move, not standstill
+                legal_move(Piece, Color, C1, R1, C2, R2), % Whether it is a legal move or no
+                \+ causes_check(Piece, Color, C1, R1, C2, R2) % Move cannot lead its king in check
             ),
             TargetSquares).
 
-% Lấy danh sách các quân cờ còn lại trừ vua
+% --- Get the list of all pieces except the king ---
 get_remaining_pieces(RemainingPieces) :-
     findall((C, R, Color, Piece), (piece_at(C, R, Color, Piece), Piece \= king), RemainingPieces).
 
-% Kiểm tra không đủ quân chiếu hết
+% --- Not enough piece to checkmate ---
 insufficient_material :-
-    get_remaining_pieces([]).  % Chỉ còn 2 vua
+    get_remaining_pieces([]).  % Endgame with only Kings
 
 insufficient_material :-
-    get_remaining_pieces([(_, _, _, knight)]).  % Chỉ còn vua + mã
+    get_remaining_pieces([(_, _, _, knight)]).  % Endgame with Kings and Knight
 
 insufficient_material :-
-    get_remaining_pieces([(_, _, _, bishop)]).  % Chỉ còn vua + tượng
+    get_remaining_pieces([(_, _, _, bishop)]).  % Endgame with Kings and Bishop
 
-% Trường hợp hai quân tượng đứng cùng màu ô
+% --- In case 2 bishops in the same color square ---
 insufficient_material :-
     get_remaining_pieces([(C1, R1, _, bishop), (C2, R2, _, bishop)]),
     square_color(C1, R1, Color1),
     square_color(C2, R2, Color2),
-    Color1 = Color2.  % Hai quân tượng đứng cùng màu -> hòa
+    Color1 = Color2.  % Same color square -> Draw
 
-
-% Luật kiểm tra chiếu hết
+% --- Checkmate ---
 checkmate(Color) :-
     in_check(Color),
     \+ has_legal_move(Color).
 
-% Kiểm tra còn nước đi hợp lệ không
+% --- Any legal moves left ---
 has_legal_move(Color) :-
     piece_at(C1, R1, Color, Piece),
     between(1, 8, C2),
     between(1, 8, R2),
     legal_move(Piece, Color, C1, R1, C2, R2),
     \+ causes_check(Piece, Color, C1, R1, C2, R2),
-    !. % Nếu tìm được 1 nước hợp lệ là dừng ngay
+    !. % Stop if find one
 
-% Kiểm tra nếu di chuyển quân này có làm cho vua bị chiếu không
+% --- Whether moving a piece can lead the king in check or not ---
 causes_check(Piece, Color, C1, R1, C2, R2) :-
-    % Lưu trạng thái last_move hiện tại
+    % Save the current last_move
     last_move(LMC1, LMR1, LMC2, LMR2),
 
-    % Lưu quân bị ăn (nếu có)
+    % Save the taken piece
     (piece_at(C2, R2, CapturedColor, CapturedPiece) ->
         HasCapture = true ; (HasCapture = false, CapturedColor = none, CapturedPiece = none)),
 
-    % Tạm thời di chuyển quân cờ
+    % Temporarily move the piece
     retract(piece_at(C1, R1, Color, Piece)),
     (HasCapture -> retract(piece_at(C2, R2, CapturedColor, CapturedPiece)) ; true),
     assertz(piece_at(C2, R2, Color, Piece)),
 
-    % Kiểm tra vua có bị chiếu không
+    % Whether king is in check or no
     (in_check(Color) -> CheckResult = true ; CheckResult = false),
 
-    % Hoàn tác nước đi
+    % Undo a move
     retract(piece_at(C2, R2, Color, Piece)),
     (HasCapture -> assertz(piece_at(C2, R2, CapturedColor, CapturedPiece)) ; true),
     assertz(piece_at(C1, R1, Color, Piece)),
 
-    % Khôi phục last_move
+    % Bring the last_move back
     retractall(last_move(_, _, _, _)),
     assertz(last_move(LMC1, LMR1, LMC2, LMR2)),
 
-    % Trả kết quả
+    % Return
     CheckResult.
 
-% --- Hàm di chuyển quân cờ tổng quát ---
+% --- Move piece ---
 move_piece(Piece, Color, C1, R1, C2, R2) :-
     legal_move(Piece, Color, C1, R1, C2, R2),
 
-    % Kiểm tra có quân bị ăn không
+    % Whether a piece is captured or no
     (piece_at(C2, R2, _, _) -> Captured = true ; Captured = false),
 
-    % Thực hiện di chuyển
+    % Move piece
     retract(piece_at(C1, R1, Color, Piece)),
 
-    (   % Nếu là en passant
+    (   % If it is an en passant
         (Piece = pawn, en_passant(Color, C1, R1, C2, R2))
-    ->  % Xóa tốt bị bắt qua đường
+    ->  % Remove the captured pawn
         pawn_dir(Color, Dir, _),
         RowPawn is R2 - Dir,
         retract(piece_at(C2, RowPawn, _, pawn)),
         CapturedFlag = true
-    ;   % Nếu không phải en passant
+    ;   % If it is not an en passant
         (Captured -> retract(piece_at(C2, R2, _, _)) ; true),
         CapturedFlag = Captured
     ),
@@ -263,19 +261,19 @@ move_piece(Piece, Color, C1, R1, C2, R2) :-
     retractall(last_move(_,_,_,_)),
     assertz(last_move(C1, R1, C2, R2)),
 
-    % Đánh dấu nếu quân xe di chuyển
-    % Chỉ đánh dấu nếu xe di chuyển TỪ VỊ TRÍ BAN ĐẦU của nó và cờ chưa được set
+    % Mark if the rook has moved
+    % Only mark if the rook has moved from its initial position and flag is not set
     (Piece = rook,
-        ( (Color = white, R1 = 1) ; (Color = black, R1 = 8) ), % Xe ở hàng ban đầu
-        ( C1 = 1 ; C1 = 8 ) -> % Và ở một trong hai cột ban đầu của xe (A hoặc H)
-            ( \+ rook_moved(Color, C1) -> % Nếu cờ cho xe ở cột C1 này chưa được set
+        ( (Color = white, R1 = 1) ; (Color = black, R1 = 8) ), % Rook at the first row
+        ( C1 = 1 ; C1 = 8 ) -> % Initial column (A or H)
+            ( \+ rook_moved(Color, C1) -> % If the flag for the rook at column C1 is not set
                 assertz(rook_moved(Color, C1))
             ; true )
-    ; true ), % Không làm gì nếu không phải xe hoặc không phải từ vị trí gốc hoặc đã set
-    % Đánh dấu nếu quân vua di chuyển
+    ; true ), % Do nothing if it is not a rook or not from initial position or is already set
+    % Mark if the king has moved
     (Piece = king -> 
         (retractall(king_moved(Color)), assertz(king_moved(Color))),
-        (abs(C2 - C1) =:= 2 ->  % Nếu nhập thành
+        (abs(C2 - C1) =:= 2 ->  % Castle
             (C2 > C1 ->
                 RookColOld is 8, RookColNew is 6
             ;
@@ -286,7 +284,7 @@ move_piece(Piece, Color, C1, R1, C2, R2) :-
         ; true)
     ; true),
 
-    % Cập nhật đồng hồ 50 nước
+    % Update the halfmove_clock
     (
         (Piece = pawn ; CapturedFlag = true) ->
             retractall(halfmove_clock(_)),
@@ -298,7 +296,7 @@ move_piece(Piece, Color, C1, R1, C2, R2) :-
             assertz(halfmove_clock(N1))
     ),
 
-    % Cập nhật lịch sử bàn cờ để kiểm tra lặp lại 3 lần
+    % Update the board history to check 3 fold repetition
     push_board_history,
 
 

@@ -7,9 +7,9 @@ piece_value(knight, 3).
 piece_value(bishop, 3).
 piece_value(rook, 5).
 piece_value(queen, 9).
-piece_value(king, 1000).  % Vua có giá trị cực lớn để tránh mất
+piece_value(king, 1000).  % King is the most valuable piece
 
-% --- Hàm tính điểm toàn bàn cờ ---
+% --- Evaluate the board ---
 evaluate_board(Color, Score) :-
     findall(Value, (piece_at(_, _, Color, Piece), piece_value(Piece, Value)), MyValues),
     opponent_color(Color, OppColor), % SỬA: Sử dụng opponent_color từ Chess_Helper.pl
@@ -25,7 +25,7 @@ all_legal_moves(Color, Moves) :-
                 % Lặp qua tất cả các ô đích có thể
                 between(1, 8, C2),
                 between(1, 8, R2),
-                (C1 \= C2 ; R1 \= R2), % Phải là một nước đi, không phải đứng yên
+                (C1 \= C2 ; R1 \= R2), % Has to be a move, not standstill
                 legal_move(Piece, Color, C1, R1, C2, R2), % Kiểm tra luật di chuyển cơ bản (từ Chess_Law.pl)
                 \+ causes_check(Piece, Color, C1, R1, C2, R2), % Quan trọng: Nước đi không được tự làm vua bị chiếu
                 Move = (Piece, C1, R1, C2, R2)
@@ -73,7 +73,7 @@ minimax(Color, Depth, Alpha, Beta, BestScore, BestMove) :-
         % Không có nước đi hợp lệ cho Color
         ( in_check(Color) -> % Kiểm tra xem có phải chiếu bí không (sử dụng in_check từ Chess_Law)
             % Chiếu bí: Điểm rất thấp cho người chơi hiện tại.
-            % Cộng thêm Depth vào điểm để ưu tiên chiếu bí ở độ sâu lớn hơn một chút (trì hoãn điều không thể tránh khỏi).
+            % Cộng thêm Depth vào điểm để ưu tiên chiếu bí ở độ sâu lớn hơn một chút (delay).
             BestScore is -10000 - Depth, % Sử dụng một số âm lớn
             BestMove = none % Không có nước đi nào
         ; % Đó là hết nước đi (stalemate)
@@ -112,7 +112,7 @@ process_moves([(Piece, C1, R1, C2, R2) | RestMoves], PlayerColor, OpponentColor,
     NewBetaForOpponent is -Alpha,
     minimax(OpponentColor, CurrentDepth, NewAlphaForOpponent, NewBetaForOpponent, OpponentRawScore, _OpponentMove), % _OpponentMove không dùng ở đây
     
-    % Hoàn tác nước đi đã mô phỏng
+    % Undo the move
     undo_move(Piece, PlayerColor, C1, R1, C2, R2, Captured),
 
     % Tính điểm cho nước đi này từ góc nhìn của PlayerColor (NegaMax)
@@ -150,7 +150,7 @@ minimax(Color, Depth, Score, Move) :-
 
 % --- Nước đi ngẫu nhiên ---
 % random_move(+Color, -Piece, -C1, -R1, -C2, -R2)
-% Thành công nếu tìm thấy một nước đi hợp lệ ngẫu nhiên, thất bại nếu không.
+% Succeed if find a random legal move , Fail if not.
 random_move(Color, Piece, C1, R1, C2, R2) :-
     all_legal_moves(Color, Moves),
     ( Moves == [] ->
@@ -161,7 +161,7 @@ random_move(Color, Piece, C1, R1, C2, R2) :-
 
 % --- Tìm nước đi tốt nhất theo cấp độ ---
 % find_best_move(+Color, +Level, -Piece, -C1, -R1, -C2, -R2)
-% Thành công nếu tìm thấy một nước đi, thất bại nếu không.
+% Succeed if find a legal move , Fail if not.
 find_best_move(Color, Level, FinalPiece, FinalC1, FinalR1, FinalC2, FinalR2) :-
     % Đầu tiên, kiểm tra xem có BẤT KỲ nước đi hợp lệ nào cho màu hiện tại không.
     % Nếu không, trò chơi kết thúc (chiếu bí hoặc hết nước đi), và AI nên thất bại.

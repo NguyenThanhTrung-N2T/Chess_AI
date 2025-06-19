@@ -45,7 +45,7 @@ class Board:
         else:
             self.prolog_engine = prolog_engine
 
-        # ➕ Các thuộc tính mới để tự quản lý bàn cờ
+        # Các thuộc tính mới để tự quản lý bàn cờ
         self.board_state = self.init_board_state()  # Trạng thái bàn cờ 8x8
         self.assert_board_state()  # Assert trạng thái ban đầu vào Prolog
         print("Các quân cờ hiện tại từ Prolog:")
@@ -140,7 +140,7 @@ class Board:
 
                 # Vẽ viền đỏ nếu là vua đang bị chiếu
                 if self.in_check_square == (row, col):
-                    pygame.draw.rect(self.screen, (255, 0, 0), rect, border_thickness)
+                    pygame.draw.rect(self.screen, king_in_check_color, rect, border_thickness)
 
                 # Vẽ viền màu xanh (hoặc màu khác) nếu là ô đang được chọn
                 if self.selected_square == (row, col):
@@ -149,17 +149,23 @@ class Board:
                 # Vẽ highlight cho các nước đi hợp lệ
                 prolog_row_to_check = 8 - row  # Chuyển đổi từ Py row sang Prolog row
                 prolog_col_to_check = col + 1  # Chuyển đổi từ Py col sang Prolog col
-                
                 if (prolog_col_to_check, prolog_row_to_check) in self.highlighted_squares_prolog_coords:
                     pygame.draw.rect(self.screen, highlight_square_color, rect, border_thickness)
-        
 
-
+                # Vẽ nước đi vừa đi của đối thủ
+                result = list(self.prolog_engine.query("last_move(C1, R1, C2, R2)."))
+                value = result[0]
+                from_col, from_row, to_col, to_row = value['C1']-1, 8-value['R1'],value['C2']-1, 8-value['R2']
+                if from_col != -1:
+                    from_rect = pygame.Rect(offset_x + from_col * self.cell_size, offset_y + from_row * self.cell_size, self.cell_size, self.cell_size)
+                    to_rect = pygame.Rect(offset_x + to_col * self.cell_size, offset_y + to_row * self.cell_size, self.cell_size, self.cell_size)
+                    pygame.draw.rect(self.screen, last_move_square_color, from_rect)
+                    pygame.draw.rect(self.screen, last_move_square_color, to_rect)  
         # Vẽ thông báo trạng thái
         if self.status_message:
             msg = status_msg_font.render(self.status_message, True, (255, 0, 0))
             self.screen.blit(msg, msg_pos)
-
+            
     # Vẽ các quân cờ trên bàn cờ
     def draw_pieces(self, offset_x, offset_y):
         for row in range(8):
@@ -189,7 +195,7 @@ class Board:
     # Chuyển đổi lượt chơi
     def switch_turn(self):
         self.turn = "b" if self.turn == "w" else "w"
-        self.status_message = f"Turn: {'White' if self.turn == 'w' else 'Black'}"
+        self.status_message = ""
 
     # Phương thức assert_board_state để cập nhật trạng thái bàn cờ vào Prolog
     def assert_board_state(self):
@@ -354,7 +360,7 @@ class Board:
                 "highlighted_squares_before_move": list(self.highlighted_squares_prolog_coords) # Deep copy
             }
             if move_data_for_history["prolog_board_history_raw"] and \
-               isinstance(move_data_for_history["prolog_board_history_raw"][0], list):
+                isinstance(move_data_for_history["prolog_board_history_raw"][0], list):
                 move_data_for_history["prolog_board_history"] = list(move_data_for_history["prolog_board_history_raw"][0]) # Deep copy
             else:
                 move_data_for_history["prolog_board_history"] = []
@@ -369,9 +375,13 @@ class Board:
             if self.selected_square is None:
                 # Người chơi chọn một quân cờ
                 piece_on_square = self.board_state[to_row_py][to_col_py] # to_row_py, to_col_py là ô vừa click
-                if piece_on_square and self.is_player_piece(piece_on_square):
-                    self.selected_square = (to_row_py, to_col_py)
-                    self.update_highlighted_squares() # Cập nhật highlight
+                if piece_on_square:
+                    if self.is_player_piece(piece_on_square):
+                        self.selected_square = (to_row_py, to_col_py)
+                        self.update_highlighted_squares() # Cập nhật highlight
+                        self.status_message = ""
+                    else:
+                        self.status_message = "Cannot select this piece!"
                 return # Đợi click thứ hai (ô đích)
             else:
                 # Người chơi đã chọn quân và giờ chọn ô đích
@@ -403,7 +413,6 @@ class Board:
         # Gọi move_piece trong Prolog
         query = f"move_piece({piece_type_move}, {current_player_color_prolog}, {from_col_prolog_move}, {from_row_prolog_move}, {to_col_prolog}, {to_row_prolog})."
         result = list(self.prolog_engine.query(query))
-        print(f"Prolog move_piece query: {query} -> Result: {len(result)>0}")
 
         if result: # move_piece thành công trong Prolog
             if save_history_this_time: # Chỉ thêm vào history nếu đó là một nỗ lực di chuyển hoàn chỉnh và thành công
@@ -427,7 +436,6 @@ class Board:
                 en_passant_captured_pawn_row_py = to_row_py + pawn_dir_val # Hàng của quân tốt bị bắt (theo Python)
                 if 0 <= en_passant_captured_pawn_row_py < 8:
                     self.board_state[en_passant_captured_pawn_row_py][to_col_py] = None
-                    print(f"Python board: En passant capture visual update at ({en_passant_captured_pawn_row_py}, {to_col_py})")
 
             # Nhập thành (Castling):
             if piece_type_move == "king" and abs(to_col_prolog - from_col_prolog_move) == 2:
@@ -458,7 +466,6 @@ class Board:
                 # Cập nhật Prolog
                 promo_query = f"promote_pawn({to_col_prolog}, {to_row_prolog}, {current_player_color_prolog}, {promoted_to_piece_type})."
                 list(self.prolog_engine.query(promo_query))
-                print(f"Prolog promotion query: {promo_query}")
                 # Cập nhật board_state Python
                 self.board_state[to_row_py][to_col_py] = f"{current_player_color_prolog[0]}_{promoted_to_piece_type}"
 
@@ -472,12 +479,13 @@ class Board:
 
             if not self.game_over:
                 self.switch_turn()
-        
+            
         else: # move_piece thất bại trong Prolog
             if not is_ai_move: # Chỉ hiển thị "Invalid move!" cho người chơi
                 self.status_message = "Invalid move!"
             self.selected_square = None # Bỏ chọn dù nước đi thất bại
             self.highlighted_squares_prolog_coords = [] # Xóa highlight nếu nước đi không hợp lệ
+        
 
     def check_game_status_after_move(self, color_to_check_for_prolog):
         """Kiểm tra trạng thái game (chiếu, chiếu bí, hết nước,...) cho màu được chỉ định."""
@@ -534,140 +542,13 @@ class Board:
         else:
             # Chỉ xóa status_message nếu không phải là thông báo kết thúc game
             if not self.game_over:
-                 self.status_message = f"Turn: {'White' if self.turn == 'w' else 'Black'}" # Thông báo lượt mặc định
+                self.status_message = "" # Thông báo lượt mặc định
             self.in_check_square = None
 
     # Kiểm tra xem quân cờ có phải là quân vua của đối thủ hay không
     def is_enemy_king(self, piece, enemy_color):
         piece_type, color = self.parse_piece(piece)
         return piece_type == "king" and color == enemy_color
-
-    # # Xử lý sự kiện click chuột ( chọn quân cờ và nước đi )
-    # def handle_click(self, row, col):
-    #     if self.game_over:
-    #         return
-        
-    #     square = chess.square(col, 7 - row)
-
-    #     if self.selected_square is None:
-    #         if self.is_valid_selection(row, col):
-    #             self.selected_square = (row, col)
-    #             self.status_message = ">> Your king is in check" if self.chess_board.is_check() else ""
-    #         else:
-    #             self.status_message = ">> Can't select this cell"
-    #     else:
-    #         from_row, from_col = self.selected_square
-    #         from_square = chess.square(from_col, 7 - from_row)
-    #         to_square = square
-
-    #         # Nếu vừa ấn quân mình thì không phải nước đi mà chỉ chọn quân khác
-    #         selected_piece = self.chess_board.piece_at(from_square)
-    #         clicked_piece = self.chess_board.piece_at(to_square)
-    #         if clicked_piece and clicked_piece.color == selected_piece.color:
-    #             self.selected_square = (row, col)
-    #             return
-            
-    #         # Nước đi
-    #         move = chess.Move(from_square, to_square)
-    #         piece = self.chess_board.piece_at(from_square)
-    #         to_rank = chess.square_rank(to_square)
-
-    #         # Tạm thời dùng hậu làm quân phong mặc định để kiểm tra hợp lệ
-    #         temp_move = chess.Move(from_square, to_square, promotion=chess.QUEEN)
-
-    #         if piece.piece_type == chess.PAWN and to_rank in [0, 7] and temp_move in self.chess_board.legal_moves:
-    #             # Nếu đi được và là phong cấp → cho người chơi chọn quân
-    #             promotion_piece = self.show_promotion_menu()
-    #             move = chess.Move(from_square, to_square, promotion=promotion_piece)
-    #         else:
-    #             move = chess.Move(from_square, to_square)
-
-    #         if move in self.chess_board.legal_moves:
-    #             is_capture = False
-    #             is_castling = False
-    #             current_move = chess.Move.from_uci(move.uci())
-    #             if self.chess_board.is_capture(current_move):
-    #                 is_capture = True
-    #             elif self.chess_board.is_castling(current_move):
-    #                 is_castling = True
-    #             self.move_history.append(move.uci())
-    #             self.chess_board.push(move)
-    #             if self.chess_board.is_check():
-    #                 king_sq = self.chess_board.king(self.chess_board.turn)
-    #                 row_check = 7 - chess.square_rank(king_sq)
-    #                 col_check = chess.square_file(king_sq)
-    #                 self.king_in_check_square = (row_check, col_check)
-    #                 self.status_message = ">> Your king is in check "
-    #                 # Check SOUND
-    #                 check_sound.play()
-    #             else:
-    #                 self.king_in_check_square = None
-    #                 self.status_message = ""
-    #                 # Move and capture SOUND    
-    #                 if is_capture:
-    #                     capture_sound.play()
-    #                 elif is_castling:
-    #                     castle_sound.play()
-    #                 else:
-    #                     move_sound.play()
-
-    #             if self.check_game_end():
-    #                 self.game_over = True
-    #                 # Game over SOUND
-    #                 if self.status_message.find("Stalemate") != -1:
-    #                     game_over_stalemate_sound.play()
-    #                 else:
-    #                     game_over_sound.play()
-    #                 return
-
-    #             # Gọi AI nếu có
-    #             if self.play_with_ai and self.chess_board.turn == self.ai_player:
-    #                 ai_move = self.ai.select_move(self.chess_board)
-
-    #                 if ai_move and ai_move in self.chess_board.legal_moves:
-    #                     move_san = self.chess_board.san(ai_move)  # Gọi san() trước khi push()
-    #                     self.chess_board.push(ai_move)
-    #                     self.move_history.append(ai_move.uci())
-
-    #                     if self.chess_board.is_check():
-    #                         king_sq = self.chess_board.king(self.chess_board.turn)
-    #                         row_check = 7 - chess.square_rank(king_sq)
-    #                         col_check = chess.square_file(king_sq)
-    #                         self.king_in_check_square = (row_check, col_check)
-    #                         self.status_message = ">> Your king is in check "
-    #                     else:
-    #                         self.king_in_check_square = None
-    #                         self.status_message = ""
-
-    #                     if self.check_game_end():
-    #                         self.game_over = True
-    #                 else:
-    #                     print(f"[LỖI] AI trả về nước đi không hợp lệ: {ai_move} - {self.chess_board.fen()}")
-
-    #         else:
-    #             self.status_message = ">> Invalid move "
-
-    #         self.selected_square = None
-
-    # # Kiểm tra kết thúc trò chơi
-    # def check_game_end(self):
-    #     if self.chess_board.is_checkmate():
-    #         winner = "White" if not self.chess_board.turn else "Black"
-    #         self.status_message = f"{winner} wins !"
-    #         return True
-    #     elif self.chess_board.is_stalemate():
-    #         self.status_message = "Draw by Stalemate !"
-    #         return True
-    #     elif self.chess_board.is_insufficient_material():
-    #         self.status_message = "Draw by Insufficient Material !"
-    #         return True
-    #     elif self.chess_board.can_claim_fifty_moves():
-    #         self.status_message = "Draw by 50 Moves !"
-    #         return True
-    #     elif self.chess_board.can_claim_threefold_repetition():
-    #         self.status_message = "Draw by Threefold Repetiton !"
-    #         return True
-    #     return False
 
     # Reset game state
     def reset_game(self):
@@ -678,7 +559,7 @@ class Board:
         self.turn = "w" # Lượt đi đầu tiên luôn là Trắng
         self.selected_square = None
         self.in_check_square = None # Xóa trạng thái vua bị chiếu
-        self.status_message = "Turn: White" # Thông báo lượt đi ban đầu
+        self.status_message = "" # Thông báo lượt đi ban đầu
         self.highlighted_squares_prolog_coords = [] # Xóa highlight khi reset
         self.game_over = False
         self.move_history = [] # Xóa lịch sử nước đi
@@ -688,8 +569,7 @@ class Board:
     # # Hoàn tác nước đi
     def undo_move(self):
         if not self.move_history:
-            print("No moves to undo.")
-            self.status_message = "No moves to undo." # Cập nhật status message
+            self.status_message = "No moves to undo!" # Cập nhật status message
             return
 
         num_undos = 1
@@ -706,8 +586,7 @@ class Board:
             if self.play_with_ai and len(self.move_history) == 1 and num_undos == 2:
                 num_undos = 1 # Nếu muốn undo 2 (AI) nhưng chỉ còn 1, thì undo 1
             elif len(self.move_history) < num_undos:
-                print(f"Not enough history to undo {num_undos} moves. Only {len(self.move_history)} available.")
-                self.status_message = "Not enough history to undo."
+                self.status_message = "Not enough history to undo!"
                 return
 
         restored_state_info_final = None # Sẽ lưu trạng thái của lần undo cuối cùng
@@ -717,7 +596,7 @@ class Board:
             
             last_state_info = self.move_history.pop()
             if i == num_undos -1 : # Lần undo cuối cùng trong vòng lặp
-                 restored_state_info_final = last_state_info
+                restored_state_info_final = last_state_info
 
             # Restore Python board state
             self.board_state = last_state_info["board_state_before_move"] # Đã là deep copy
@@ -739,12 +618,13 @@ class Board:
             self.assert_board_state()
 
             # Assert the specific dynamic facts from history
+
             if last_state_info["prolog_last_move"]:
                 c1,r1,c2,r2 = last_state_info["prolog_last_move"]
                 if all(v is not None for v in [c1,r1,c2,r2]):
                     list(self.prolog_engine.query(f"assertz(last_move({c1},{r1},{c2},{r2}))"))
                 else:
-                     list(self.prolog_engine.query("assertz(last_move(0,0,0,0))"))
+                    list(self.prolog_engine.query("assertz(last_move(0,0,0,0))"))
             else:
                 list(self.prolog_engine.query("assertz(last_move(0,0,0,0))"))
 
@@ -776,7 +656,7 @@ class Board:
             if not self.game_over: # Nếu game không ở trạng thái kết thúc sau khi undo
                 self.check_game_status_after_move(self.current_color()) # Kiểm tra cho người chơi hiện tại
                 if not self.game_over: # Nếu vẫn không kết thúc sau khi kiểm tra
-                    self.status_message = f"Turn: {'White' if self.turn == 'w' else 'Black'}"
+                    self.status_message = ""
                 # Nếu self.game_over là true sau check_game_status_after_move, status_message đã được đặt bởi nó
             else: # Nếu game ở trạng thái kết thúc sau khi undo (ví dụ: undo về chiếu bí)
                 self.status_message = restored_state_info_final["status_message_before_move"]

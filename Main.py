@@ -153,7 +153,7 @@ def result_popup(screen, board):
     global popup_y
     speed = 50
     winner = "b"
-    if board.status_message.startswith("White"):
+    if board.status_message.startswith("Checkmate! W"):
         winner = "w"
     elif board.status_message.startswith("Draw"):
         winner = "d"
@@ -179,7 +179,12 @@ def result_popup(screen, board):
     #load
     def render_popup(popup_y, btn_back, btn_playagain):
         text = font.render("END GAME", False, popup_text_color)
-        text1 = font3.render(board.status_message, False, popup_text_color)        
+        if "White wins" in board.status_message:
+            text1 = font3.render("White wins!", False, popup_text_color)      
+        elif "Black wins" in board.status_message:
+            text1 = font3.render("Black wins!", False, popup_text_color)
+        else:
+            text1 = font3.render("Draw", False, popup_text_color)
         text_playagain = font2.render("Play again", False, popup_text_color)
         text_back = font2.render("Back", False, popup_text_color)
 
@@ -190,7 +195,6 @@ def result_popup(screen, board):
 
         if winner == "d":
             index = board.status_message.find("Draw by")
-            text1 = font3.render("Draw", False, popup_text_color)
             text2 = font2.render("By", False, popup_text_color)
             text3 = font2.render(board.status_message[index+8:], False, popup_text_color)
             rect_text1 = text1.get_rect(top = rect_text.bottom + 5*gap_popup_n_txt, centerx = rect_popup.centerx)
@@ -356,7 +360,6 @@ def main():
         #background and buttons
         screen.fill(background_color) 
         mouse_pos = pygame.mouse.get_pos()
-        #print(mouse_pos)
         def draw_button(btn, txt, icon, rect):
             color = tuple(c + 20 for c in btn_color) if is_hovered(btn, mouse_pos) else btn_color
             pygame.draw.rect(screen, tuple(c - 20 for c in btn_color), btn.move(btn_shadow,btn_shadow), border_radius = 10)
@@ -372,23 +375,19 @@ def main():
         board.draw_board(offset_x = offset_x_board, offset_y = offset_y_board) 
 
         # vẽ viền các ô mà quân cờ có thể di chuyển đến
-        # board.highlight_squares(offset_x = offset_x_board, offset_y = offset_y_board)
         board.draw_pieces(offset_x = offset_x_piece, offset_y = offset_y_piece)
 
         # Hiển thị thông báo kết quả khi game kết thúc
-        #string = "White To Move" if board.is_white_turn() else "Black To Move"
-        # if board.game_over:
-        #     back_clicked = result_popup(screen, board)
-        # if board.game_over or back_clicked:
-        #     string = "Well Played"
-        # txt_turn = font1.render(string, True, btn_color) 
-        # rect_txt_turn = txt_turn.get_rect(centerx = btn_undo.centerx, bottom = btn_undo.top - gap_turn_n_btn)
-        # if is_hovered(rect_txt_turn, mouse_pos):
-        #     txt_turn = font1.render(string, True, tuple(c+30 for c in btn_color)) 
-        # screen.blit(txt_turn, rect_txt_turn)
-
-
-
+        string = "White To Move" if board.turn=="w" else "Black To Move"
+        if board.game_over:
+             back_clicked = result_popup(screen, board)
+        if board.game_over or back_clicked:
+             string = "Well Played"
+        txt_turn = font1.render(string, True, btn_color) 
+        rect_txt_turn = txt_turn.get_rect(centerx = btn_undo.centerx, bottom = btn_undo.top - gap_turn_n_btn)
+        if is_hovered(rect_txt_turn, mouse_pos):
+            txt_turn = font1.render(string, True, tuple(c+30 for c in btn_color)) 
+        screen.blit(txt_turn, rect_txt_turn)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:

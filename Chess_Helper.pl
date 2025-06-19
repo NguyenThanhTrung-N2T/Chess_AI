@@ -1,8 +1,8 @@
-% Xác định màu quân đối thủ
+% Get the color of opponent
 opponent_color(white, black).
 opponent_color(black, white).
 
-% --- Hàm tiện ích ---
+% --- Utility function ---
 abs(X, Y) :- X >= 0, Y is X; X < 0, Y is -X.
 
 between_min_max(A, B, Min, Max) :-
@@ -12,7 +12,7 @@ between_min_max(A, B, Min, Max) :-
 clear_straight(C1, R1, C2, R2) :-
     (C1 =:= C2 ->
         between_min_max(R1, R2, MinR, MaxR),
-        % Đảm bảo R_intermediate nằm trong bàn cờ, mặc dù between_min_max thường đảm bảo điều này nếu C1,R1,C2,R2 hợp lệ
+        % Ensure R_intermediate is in the board, though between_min_max thường đảm bảo điều này nếu C1,R1,C2,R2 hợp lệ
         \+ (between(MinR, MaxR, R_intermediate), R_intermediate >= 1, R_intermediate =< 8, piece_at(C1, R_intermediate, _, _))
     ;
      R1 =:= R2 ->
@@ -59,7 +59,7 @@ rook_move_path(C1, R1, C2, R2) :-
     clear_straight(C1, R1, C2, R2).
 
 
-% --- Kiểm tra không ăn cùng màu ---
+% --- Check that the piece is not capturing a piece of the same color. ---
 not_same_color(C2, R2, Color) :-
     (\+ piece_at(C2, R2, _, _));
     (piece_at(C2, R2, OtherColor, _), OtherColor \= Color).
