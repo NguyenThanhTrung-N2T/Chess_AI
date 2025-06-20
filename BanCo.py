@@ -132,35 +132,44 @@ class Board:
 
     # Vẽ bàn cờ
     def draw_board(self, offset_x, offset_y):
+        # 1. Lấy thông tin nước đi cuối cùng một lần và chuyển đổi sang tọa độ Pygame
+        py_from_last_move = None
+        py_to_last_move = None
+        last_move_query_result = list(self.prolog_engine.query("last_move(C1, R1, C2, R2)."))
+        if last_move_query_result and last_move_query_result[0]:
+            lm_data = last_move_query_result[0]
+            # Kiểm tra xem tất cả các key có tồn tại và không phải None, và không phải trạng thái khởi tạo (0,0,0,0)
+            if all(k in lm_data and lm_data[k] is not None for k in ['C1', 'R1', 'C2', 'R2']) and \
+               not (lm_data.get('C1') == 0 and lm_data.get('R1') == 0 and lm_data.get('C2') == 0 and lm_data.get('R2') == 0):
+                c1, r1, c2, r2 = lm_data['C1'], lm_data['R1'], lm_data['C2'], lm_data['R2']
+                py_from_last_move = (8 - r1, c1 - 1) # (row_py, col_py)
+                py_to_last_move = (8 - r2, c2 - 1)   # (row_py, col_py)
+
         for row in range(8):
             for col in range(8):
-                color = self.colors[(row + col) % 2]
                 rect = pygame.Rect(offset_x + col * self.cell_size, offset_y + row * self.cell_size, self.cell_size, self.cell_size)
-                pygame.draw.rect(self.screen, color, rect)
 
-                # Vẽ viền đỏ nếu là vua đang bị chiếu
-                if self.in_check_square == (row, col):
-                    pygame.draw.rect(self.screen, king_in_check_color, rect, border_thickness)
+                # 2a. Xác định màu nền của ô
+                current_cell_bg_color = self.colors[(row + col) % 2] # Màu mặc định (trắng/đen)
+                if py_from_last_move and (row, col) == py_from_last_move:
+                    current_cell_bg_color = last_move_square_color
+                if py_to_last_move and (row, col) == py_to_last_move: # Dùng 'if', không phải 'elif', vì ô đi và ô đến có thể trùng nhau
+                    current_cell_bg_color = last_move_square_color
+                
+                # 2b. Vẽ nền ô
+                pygame.draw.rect(self.screen, current_cell_bg_color, rect)
 
-                # Vẽ viền màu xanh (hoặc màu khác) nếu là ô đang được chọn
-                if self.selected_square == (row, col):
-                    pygame.draw.rect(self.screen, selected_square_color, rect, border_thickness)
+                # 2c. Vẽ các loại viền LÊN TRÊN màu nền
+                prolog_row_to_check = 8 - row  # Chuyển đổi Py row sang Prolog row
+                prolog_col_to_check = col + 1  # Chuyển đổi Py col sang Prolog col
 
-                # Vẽ highlight cho các nước đi hợp lệ
-                prolog_row_to_check = 8 - row  # Chuyển đổi từ Py row sang Prolog row
-                prolog_col_to_check = col + 1  # Chuyển đổi từ Py col sang Prolog col
                 if (prolog_col_to_check, prolog_row_to_check) in self.highlighted_squares_prolog_coords:
                     pygame.draw.rect(self.screen, highlight_square_color, rect, border_thickness)
-
-                # Vẽ nước đi vừa đi của đối thủ
-                result = list(self.prolog_engine.query("last_move(C1, R1, C2, R2)."))
-                value = result[0]
-                from_col, from_row, to_col, to_row = value['C1']-1, 8-value['R1'],value['C2']-1, 8-value['R2']
-                if from_col != -1:
-                    from_rect = pygame.Rect(offset_x + from_col * self.cell_size, offset_y + from_row * self.cell_size, self.cell_size, self.cell_size)
-                    to_rect = pygame.Rect(offset_x + to_col * self.cell_size, offset_y + to_row * self.cell_size, self.cell_size, self.cell_size)
-                    pygame.draw.rect(self.screen, last_move_square_color, from_rect)
-                    pygame.draw.rect(self.screen, last_move_square_color, to_rect)  
+                if self.in_check_square == (row, col):
+                    pygame.draw.rect(self.screen, king_in_check_color, rect, border_thickness)
+                if self.selected_square == (row, col):
+                    pygame.draw.rect(self.screen, selected_square_color, rect, border_thickness)
+                
         # Vẽ thông báo trạng thái
         if self.status_message:
             msg = status_msg_font.render(self.status_message, True, (255, 0, 0))
