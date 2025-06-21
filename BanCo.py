@@ -512,28 +512,24 @@ class Board:
 
         # Hết nước đi (Stalemate)
         if list(self.prolog_engine.query(f"stalemate({color_to_check_for_prolog})")):
-            self.status_message = "Stalemate! It's a draw!"
             game_over_stalemate_sound.play()
             self.game_over = True
             return
 
         # Hòa do luật 50 nước
         if list(self.prolog_engine.query("draw_by_fifty_moves")):
-            self.status_message = "Draw by 50-move rule!"
             game_over_stalemate_sound.play()
             self.game_over = True
             return
 
         # Hòa do lặp lại 3 lần
         if list(self.prolog_engine.query("draw_by_threefold_repetition")):
-            self.status_message = "Draw by threefold repetition!"
             game_over_stalemate_sound.play()
             self.game_over = True
             return
 
         # Hòa do không đủ quân chiếu bí
         if list(self.prolog_engine.query("insufficient_material")):
-            self.status_message = "Draw by insufficient material!"
             game_over_stalemate_sound.play()
             self.game_over = True
             return
