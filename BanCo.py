@@ -172,7 +172,7 @@ class Board:
                 
         # Vẽ thông báo trạng thái
         if self.status_message:
-            if self.status_message.startswith(("Draw","Checkmate")) == False:
+            if self.status_message.startswith(("Draw","Checkmate","Stalemate")) == False:
                 msg = status_msg_font.render(self.status_message, True, (255, 0, 0))
                 self.screen.blit(msg, msg_pos)
             
@@ -290,18 +290,15 @@ class Board:
             return
 
         # Nếu là lượt AI và đang chơi với AI, không cho người dùng click
-        if self.play_with_ai and self.turn == self.ai_color_char:
+        if not self.game_over and self.play_with_ai and self.turn == self.ai_color_char:
             print("AI is thinking... Please wait.")
             return
 
         # Xử lý logic di chuyển của người chơi
-        self._process_move_attempt(row_prolog, col_prolog, is_ai_move=False)
+        if self._process_move_attempt(row_prolog, col_prolog, is_ai_move=False):
+            return #Nguoi choi vua thuc hien 1 nuoc di hop le -> cap nhat UI
 
-        # Sau khi người chơi đi, nếu không game over và là lượt AI
-        if not self.game_over and self.play_with_ai and self.turn == self.ai_color_char:
-            pygame.display.flip() # Cập nhật màn hình để hiển thị nước đi của người
-            pygame.time.wait(100) # Đợi một chút để người chơi thấy nước đi của mình
-            self.ai_perform_move()
+
 
     def ai_perform_move(self):
         if not self.play_with_ai or self.turn != self.ai_color_char or self.game_over:
@@ -392,7 +389,7 @@ class Board:
                         self.status_message = ""
                     else:
                         self.status_message = "Cannot select this piece!"
-                return # Đợi click thứ hai (ô đích)
+                return False# Đợi click thứ hai (ô đích)
             else:
                 # Người chơi đã chọn quân và giờ chọn ô đích
                 from_row_py_selected, from_col_py_selected = self.selected_square
@@ -403,19 +400,19 @@ class Board:
                 piece_at_selected = self.board_state[from_row_py_selected][from_col_py_selected]
                 if not piece_at_selected: 
                     self.selected_square = None
-                    return
+                    return False
                 piece_type_move, _ = self.parse_piece(piece_at_selected)
 
                 if (to_row_py, to_col_py) == (from_row_py_selected, from_col_py_selected): # Click lại quân cũ
                     self.selected_square = None
                     self.highlighted_squares_prolog_coords = [] # Xóa highlight
-                    return
+                    return False
                 
                 clicked_piece_on_board = self.board_state[to_row_py][to_col_py] # Ô đích vừa click
                 if clicked_piece_on_board and self.is_player_piece(clicked_piece_on_board): # Click vào quân khác cùng màu
                     self.selected_square = (to_row_py, to_col_py) # Đổi quân chọn
                     self.update_highlighted_squares() # Cập nhật highlight cho quân mới
-                    return
+                    return False
 
         # Đảm bảo Prolog có trạng thái bàn cờ hiện tại trước khi thử move_piece
         self.assert_board_state() 
@@ -463,7 +460,7 @@ class Board:
                 capture_sound.play()
             else: # Nước đi thường
                 move_sound.play()
-
+            
             # Phong cấp (Pawn Promotion)
             if piece_type_move == "pawn" and (to_row_prolog == 8 or to_row_prolog == 1): # Đến hàng cuối
                 promoted_to_piece_type = "queen" # AI mặc định phong Hậu
@@ -489,13 +486,13 @@ class Board:
 
             if not self.game_over:
                 self.switch_turn()
-            
+            return True
         else: # move_piece thất bại trong Prolog
             if not is_ai_move: # Chỉ hiển thị "Invalid move!" cho người chơi
                 self.status_message = "Invalid move!"
             self.selected_square = None # Bỏ chọn dù nước đi thất bại
             self.highlighted_squares_prolog_coords = [] # Xóa highlight nếu nước đi không hợp lệ
-        
+            return False
 
     def check_game_status_after_move(self, color_to_check_for_prolog):
         """Kiểm tra trạng thái game (chiếu, chiếu bí, hết nước,...) cho màu được chỉ định."""
