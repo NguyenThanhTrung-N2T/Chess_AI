@@ -287,17 +287,17 @@ class Board:
     def handle_click(self, row_prolog, col_prolog):
         # row_prolog, col_prolog là tọa độ Prolog của ô được click
         if self.game_over:
-            return
+            return False
 
         # Nếu là lượt AI và đang chơi với AI, không cho người dùng click
         if not self.game_over and self.play_with_ai and self.turn == self.ai_color_char:
             print("AI is thinking... Please wait.")
-            return
+            return False
 
         # Xử lý logic di chuyển của người chơi
         if self._process_move_attempt(row_prolog, col_prolog, is_ai_move=False):
-            return #Nguoi choi vua thuc hien 1 nuoc di hop le -> cap nhat UI
-
+            return True#Nguoi choi vua thuc hien 1 nuoc di hop le -> cap nhat UI
+        return False
 
 
     def ai_perform_move(self):

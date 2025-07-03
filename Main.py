@@ -355,7 +355,7 @@ def main():
 
     running = True
     back_clicked = False
-
+    watch_back = False
     while running:
         #background and buttons
         screen.fill(background_color) 
@@ -381,6 +381,8 @@ def main():
         string = "White To Move" if board.turn=="w" else "Black To Move"
         if board.game_over:
              back_clicked = result_popup(screen, board)
+             if back_clicked:
+                 watch_back = True
         if board.game_over or back_clicked:
              string = "Well Played"
         txt_turn = font1.render(string, True, btn_color) 
@@ -390,7 +392,7 @@ def main():
         screen.blit(txt_turn, rect_txt_turn)
 
         # Sau khi người chơi đi, nếu không game over và là lượt AI
-        if not board.game_over and board.play_with_ai and board.turn == board.ai_color_char:
+        if watch_back == False and back_clicked == False and not board.game_over and board.play_with_ai and board.turn == board.ai_color_char:
             pygame.display.flip() # Cập nhật màn hình để hiển thị nước đi của người
             # pygame.time.wait(100) # Đợi một chút để người chơi thấy nước đi của mình
             board.ai_perform_move()
@@ -407,7 +409,8 @@ def main():
                     col = (mouse_x - offset_x_board) // board.cell_size
                     row_prolog = 8 - row  # Chuyển đổi từ hệ tọa độ của pygame sang hệ tọa độ của Prolog
                     col_prolog = col + 1  # Chuyển đổi từ hệ tọa độ của pygame sang hệ tọa độ của Prolog
-                    board.handle_click(row_prolog, col_prolog)
+                    tmp = board.handle_click(row_prolog, col_prolog)
+                    watch_back = not tmp
                 # Xử lý sự kiện nhấn nút
                 # 1. game_over = true
                 # 2. mouse not in board
@@ -446,7 +449,7 @@ def main():
                     # Nếu game không còn kết thúc sau khi undo, reset trạng thái popup
                     if not board.game_over:
                         back_clicked = False
-                        popup_y = popup_start_y # Đảm bảo popup ẩn đi
+                        popup_y = popup_start_y 
                 elif btn_reset.collidepoint(mouse_x, mouse_y):
                     # Click SOUND
                     click_sound.play()
