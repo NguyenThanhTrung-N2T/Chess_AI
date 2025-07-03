@@ -424,7 +424,7 @@ def main():
                     if mode is None: # Nếu người dùng thoát khỏi menu
                         running = False # Kết thúc game loop chính
                         continue
-
+                    watch_back = False
                     back_clicked = False
                     # Reset lại bàn cờ với chế độ mới
                     board = Board(screen, cell_size, prolog_engine=prolog) # Tạo Board mới
@@ -459,6 +459,7 @@ def main():
                     # Không cần tạo lại đối tượng Board hay AI ở đây nữa,
                     # vì board.reset_game() sẽ xử lý nội bộ.
                     back_clicked = False
+                    watch_back = False
                     popup_y = popup_start_y
 
         pygame.display.flip()
