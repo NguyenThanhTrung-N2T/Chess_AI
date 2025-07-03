@@ -27,11 +27,14 @@ pawn_dir(black, -1, 7).
 pawn_move(Color, Col, Row, Col, Row2) :-
     pawn_dir(Color, Dir, StartRow),
     (
+        % Đi 1 bước
         (Row2 is Row + Dir, Row2 >= 1, Row2 =< 8,
             \+ piece_at(Col, Row2, _, _))
         ;
+        % Đi 2 bước: phải ở hàng xuất phát, cả ô giữa và ô đích đều trống
         (Row =:= StartRow, Row2 is Row + 2*Dir, Row2 >= 1, Row2 =< 8,
-            \+ piece_at(Col, Row + Dir, _, _),
+            RowMid is Row + Dir,
+            \+ piece_at(Col, RowMid, _, _),
             \+ piece_at(Col, Row2, _, _))
     ),
     Col >= 1, Col =< 8.
