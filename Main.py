@@ -390,8 +390,8 @@ def main():
         screen.blit(txt_turn, rect_txt_turn)
 
         # Sau khi người chơi đi, nếu không game over và là lượt AI
-        if not board.game_over and board.play_with_ai and board.turn == board.ai_color_char:
-            pygame.display.flip() # Cập nhật màn hình để hiển thị nước đi của người
+        if back_clicked == False and not board.game_over and board.play_with_ai and board.turn == board.ai_color_char:
+            pygame.display.flip()  # Cập nhật màn hình để hiển thị nước đi của người
             # pygame.time.wait(100) # Đợi một chút để người chơi thấy nước đi của mình
             board.ai_perform_move()
 
