@@ -30,7 +30,16 @@ class ChessAI:
                 piece = solution['Piece'] # Đây là một atom từ Prolog, ví dụ: queen, pawn
                 c1, r1, c2, r2 = solution['C1'], solution['R1'], solution['C2'], solution['R2']
                 print(f"AI selected move: {piece} from ({c1},{r1}) to ({c2},{r2})")
-                return (str(piece), c1, r1, c2, r2) 
+                # Query the game phase
+                phase_query = f"game_phase({current_player_color_str}, Phase)."
+                phase_solutions = list(self.prolog.query(phase_query))
+                if phase_solutions:
+                    phase = str(phase_solutions[0]['Phase']).capitalize()  # Capitalize for readability (e.g., Opening)
+                    print(f"Current game phase: {phase}")
+                else:
+                    print("Could not determine game phase.")
+                
+                return (str(piece), c1, r1, c2, r2)
             else:
                 print("AI found no move from Prolog.")
                 return None 
