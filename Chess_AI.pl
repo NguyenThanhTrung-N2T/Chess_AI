@@ -9,14 +9,30 @@ piece_value(rook, 5).
 piece_value(queen, 9).
 piece_value(king, 1000).  % King is the most valuable piece
 
-% --- Evaluate the board ---
+% Đếm số quân bị tấn công (có thể bị ăn ở lượt sau)
+count_attacked_pieces(Color, Count) :-
+    findall((C, R, Piece),
+        (piece_at(C, R, Color, Piece),
+         opponent_color(Color, OppColor),
+         piece_at(C2, R2, OppColor, OppPiece),
+         legal_move(OppPiece, OppColor, C2, R2, C, R)), % Nếu đối thủ có thể ăn quân này
+        AttackedList),
+    length(AttackedList, Count).
+
+% đánh giá bàn cờ dựa trên giá trị quân cờ và số quân bị tấn công
 evaluate_board(Color, Score) :-
     findall(Value, (piece_at(_, _, Color, Piece), piece_value(Piece, Value)), MyValues),
-    opponent_color(Color, OppColor), % SỬA: Sử dụng opponent_color từ Chess_Helper.pl
+    opponent_color(Color, OppColor),
     findall(Value, (piece_at(_, _, OppColor, Piece), piece_value(Piece, Value)), OppValues),
     sum_list(MyValues, MyScore),
     sum_list(OppValues, OppScore),
-    Score is MyScore - OppScore.
+    count_attacked_pieces(Color, MyAttacked),
+    count_attacked_pieces(OppColor, OppAttacked),
+    % Thưởng lớn nếu chiếu bí, thưởng vừa phải nếu chỉ chiếu
+    (in_check(OppColor), all_legal_moves(OppColor, []) -> CheckmateBonus = 10000 ; CheckmateBonus = 0),
+    (in_check(OppColor), all_legal_moves(OppColor, Moves), Moves \= [] -> CheckBonus = 10 ; CheckBonus = 0),
+    (in_check(Color) -> CheckMalus = -20 ; CheckMalus = 0),
+    Score is MyScore - OppScore - MyAttacked + OppAttacked + CheckmateBonus + CheckBonus + CheckMalus.
 
 % --- Tìm tất cả nước đi hợp lệ ---
 all_legal_moves(Color, Moves) :-
@@ -58,6 +74,32 @@ undo_move(Piece, Color, C1, R1, C2, R2, (C2, R2, OppColor, CapturedPiece)) :-
 % minimax(+Color, +Depth, +Alpha, +Beta, -Score, -Move)
 % Score: Điểm đánh giá từ góc nhìn của 'Color'.
 % Move: Nước đi tốt nhất tìm được cho 'Color' (hoặc 'none' nếu không có nước đi hợp lệ).
+% Lấy giá trị quân bị ăn (nếu có)
+capture_value((_, _, _, C2, R2), Value) :-
+    piece_at(C2, R2, _, Piece), !,
+    piece_value(Piece, Value).
+capture_value(_, 0).
+
+% Kiểm tra nước đi có chiếu đối thủ không
+check_move((Piece, C1, R1, C2, R2), PlayerColor) :-
+    simulate_move(Piece, PlayerColor, C1, R1, C2, R2, Captured),
+    opponent_color(PlayerColor, OppColor),
+    (in_check(OppColor) -> Result = true ; Result = false),
+    undo_move(Piece, PlayerColor, C1, R1, C2, R2, Captured),
+    Result == true.
+
+% Tính độ ưu tiên cho nước đi: chiếu > ăn quân giá trị cao > thường
+move_priority(Move, PlayerColor, Priority) :-
+    (check_move(Move, PlayerColor) -> Priority1 = 100 ; Priority1 = 0),
+    capture_value(Move, CaptureVal),
+    Priority is Priority1 + CaptureVal.
+
+% Sắp xếp nước đi theo độ ưu tiên
+order_moves(Moves, PlayerColor, OrderedMoves) :-
+    map_list_to_pairs({PlayerColor}/[Move, P]>>move_priority(Move, PlayerColor, P), Moves, Pairs),
+    keysort(Pairs, SortedPairsRev),
+    reverse(SortedPairsRev, SortedPairs),
+    pairs_values(SortedPairs, OrderedMoves).
 
 % Trường hợp cơ sở: Độ sâu bằng 0, đánh giá bàn cờ.
 minimax(Color, 0, _Alpha, _Beta, Score, none) :- !, % Chú ý: BestMove ở đây là none vì đây là nút lá
@@ -68,7 +110,7 @@ minimax(Color, Depth, Alpha, Beta, BestScore, BestMove) :-
     Depth > 0,
     % Tìm tất cả các nước đi thực sự hợp lệ cho người chơi hiện tại
     all_legal_moves(Color, Moves),
-    
+    order_moves(Moves, Color, OrderedMoves),
     (Moves == [] ->
         % Không có nước đi hợp lệ cho Color
         ( in_check(Color) -> % Kiểm tra xem có phải chiếu bí không (sử dụng in_check từ Chess_Law)
@@ -91,7 +133,7 @@ minimax(Color, Depth, Alpha, Beta, BestScore, BestMove) :-
         NextDepth is Depth - 1,
         
         % Gọi vị từ trợ giúp để lặp qua các nước đi và tìm nước tốt nhất
-        process_moves(Moves, Color, OppColor, NextDepth, Alpha, Beta, InitialBestScore, InitialBestMove, BestScore, BestMove)
+        process_moves(OrderedMoves, Color, OppColor, NextDepth, Alpha, Beta, InitialBestScore, InitialBestMove, BestScore, BestMove)
     ).
 
 % process_moves(+MovesList, +PlayerColor, +OpponentColor, +CurrentDepth, +Alpha, +Beta, +CurrentBestScoreSoFar, +CurrentBestMoveSoFar, -FinalBestScore, -FinalBestMove)
