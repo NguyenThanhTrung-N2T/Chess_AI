@@ -297,6 +297,8 @@ def choose_color_menu(screen):
     icon_w = pygame.transform.scale(icon_w, (60, 60))
     icon_b = pygame.transform.scale(icon_b, (60, 60))
 
+    game_start_sound = pygame.mixer.Sound("sounds/game_start.MP3")
+
     while running:
         screen.fill((230, 230, 255))
         # Tiêu đề
@@ -335,8 +337,10 @@ def choose_color_menu(screen):
                 exit()
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
                 if w_rect.collidepoint(event.pos):
+                    game_start_sound.play()
                     return "w"
                 if b_rect.collidepoint(event.pos):
+                    game_start_sound.play()
                     return "b"
 
 def main():
