@@ -282,6 +282,33 @@ def reset_prolog():
     # piece_at/4 sẽ được xử lý bởi board.assert_board_state() khi board mới được tạo.
     print("Dynamic Prolog facts (last_move, king_moved, etc.) reset by Main.py's reset_prolog function.")
 
+def choose_color_menu(screen):
+    import pygame
+    font = pygame.font.Font("fonts/pixelmix_bold.ttf", 24)
+    w_rect = pygame.Rect(320, 250, 160, 80)
+    b_rect = pygame.Rect(520, 250, 160, 80)
+    running = True
+    while running:
+        screen.fill((230, 230, 255))
+        txt = font.render("Choose your color", True, (60, 60, 60))
+        screen.blit(txt, (screen.get_width()//2 - txt.get_width()//2, 180))
+        pygame.draw.rect(screen, (255,255,255), w_rect)
+        pygame.draw.rect(screen, (80,80,80), b_rect)
+        txtw = font.render("White", True, (60,60,60))
+        txtb = font.render("Black", True, (255,255,255))
+        screen.blit(txtw, (w_rect.centerx - txtw.get_width()//2, w_rect.centery - txtw.get_height()//2))
+        screen.blit(txtb, (b_rect.centerx - txtb.get_width()//2, b_rect.centery - txtb.get_height()//2))
+        pygame.display.flip()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if w_rect.collidepoint(event.pos):
+                    return "w"
+                if b_rect.collidepoint(event.pos):
+                    return "b"
+
 def main():
     pygame.init()
     pygame.font.init()
@@ -319,6 +346,22 @@ def main():
         board.play_with_ai = True
         board.ai = ChessAI(prolog_engine=prolog, level=3) # Truyền prolog engine cho AI
     else: # Chế độ PvP hoặc các chế độ không có AI
+        board.play_with_ai = False
+        board.ai = None
+
+    if mode in ("easy", "normal", "hard"):
+        player_color = choose_color_menu(screen)
+        board = Board(screen, cell_size, prolog_engine=prolog, player_color=player_color)
+        board.ai_level = {"easy": 1, "normal": 2, "hard": 3}[mode]
+        board.play_with_ai = True
+        board.ai = ChessAI(prolog_engine=prolog, level=board.ai_level, ai_color=("b" if player_color=="w" else "w"))
+        board.ai_color_char = "b" if player_color=="w" else "w"
+        # Nếu người chơi chọn đen, AI đi trước
+        if player_color == "b":
+            board.turn = "w"
+            board.ai_perform_move()
+    else:
+        board = Board(screen, cell_size, prolog_engine=prolog)
         board.play_with_ai = False
         board.ai = None
 
@@ -379,6 +422,9 @@ def main():
 
         # Hiển thị thông báo kết quả khi game kết thúc
         string = "White To Move" if board.turn=="w" else "Black To Move"
+        # Nếu người chơi là đen, đảo lại cho dễ nhìn
+        if board.player_color == "b":
+            string = "Black To Move" if board.turn=="b" else "White To Move"
         if board.game_over:
              back_clicked = result_popup(screen, board)
              if back_clicked:
@@ -407,6 +453,10 @@ def main():
                 if back_clicked == False and board.game_over == False and mouse_in_board(mouse_x, mouse_y):
                     row = (mouse_y - offset_y_board) // board.cell_size
                     col = (mouse_x - offset_x_board) // board.cell_size
+                    # Đảo tọa độ nếu người chơi là đen
+                    if board.player_color == "b":
+                        row = 7 - row
+                        col = 7 - col
                     row_prolog = 8 - row  # Chuyển đổi từ hệ tọa độ của pygame sang hệ tọa độ của Prolog
                     col_prolog = col + 1  # Chuyển đổi từ hệ tọa độ của pygame sang hệ tọa độ của Prolog
                     tmp = board.handle_click(row_prolog, col_prolog)
@@ -444,6 +494,21 @@ def main():
                         board.play_with_ai = False
                         board.ai = None
                     popup_y = popup_start_y
+
+                    if mode in ("easy", "normal", "hard"):
+                        player_color = choose_color_menu(screen)
+                        board = Board(screen, cell_size, prolog_engine=prolog, player_color=player_color)
+                        board.ai_level = {"easy": 1, "normal": 2, "hard": 3}[mode]
+                        board.play_with_ai = True
+                        board.ai = ChessAI(prolog_engine=prolog, level=board.ai_level, ai_color=("b" if player_color=="w" else "w"))
+                        board.ai_color_char = "b" if player_color=="w" else "w"
+                        if player_color == "b":
+                            board.turn = "w"
+                            board.ai_perform_move()
+                    else:
+                        board = Board(screen, cell_size, prolog_engine=prolog)
+                        board.play_with_ai = False
+                        board.ai = None
                 elif btn_undo.collidepoint(mouse_x, mouse_y):
                     board.undo_move()  # Hàm board.undo_move() sẽ tự xử lý âm thanh
                     # Nếu game không còn kết thúc sau khi undo, reset trạng thái popup

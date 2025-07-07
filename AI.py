@@ -1,8 +1,8 @@
 class ChessAI:
-    def __init__(self, prolog_engine, level=1):
+    def __init__(self, prolog_engine, level=1,ai_color="b"):
         self.prolog = prolog_engine # Tham chiếu đến Prolog engine đã được khởi tạo và consult
         self.level = level  # 1: dễ, 2: trung bình, 3: khó
-
+        self.ai_color = ai_color
 
     def select_move(self, current_player_color_str):
         """

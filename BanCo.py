@@ -27,7 +27,7 @@ border_thickness = 5
 msg_pos = (726, 500)
 
 class Board:
-    def __init__(self, screen, size=80, prolog_engine=None):
+    def __init__(self, screen, size=80, prolog_engine=None,player_color="w"):
         self.screen = screen
         self.size = size
         self.cell_size = size
@@ -56,7 +56,9 @@ class Board:
             print(f"Lỗi khi truy vấn piece_at: {e}")
         self.selected_square = None
         self.move_history = []
-        self.turn = "w" # 'w' for white, 'b' for black
+        self.player_color = player_color  # "w" hoặc "b"
+        self.turn = "w"  # Lượt đi đầu tiên luôn là trắng
+        self.ai_color_char = "b" if player_color == "w" else "w"
         self.status_message = ""
         self.game_over = False
         self.highlighted_squares_prolog_coords = [] # Lưu các ô (C2,R2) Prolog cần highlight
@@ -147,8 +149,9 @@ class Board:
 
         for row in range(8):
             for col in range(8):
-                rect = pygame.Rect(offset_x + col * self.cell_size, offset_y + row * self.cell_size, self.cell_size, self.cell_size)
-
+                draw_row = 7 - row if self.player_color == "b" else row
+                draw_col = 7 - col if self.player_color == "b" else col
+                rect = pygame.Rect(offset_x + draw_col * self.cell_size, offset_y + draw_row * self.cell_size, self.cell_size, self.cell_size)
                 # 2a. Xác định màu nền của ô
                 current_cell_bg_color = self.colors[(row + col) % 2] # Màu mặc định (trắng/đen)
                 if py_from_last_move and (row, col) == py_from_last_move:
@@ -182,9 +185,11 @@ class Board:
             for col in range(8):
                 piece = self.board_state[row][col]
                 if piece:
+                    draw_row = 7 - row if self.player_color == "b" else row
+                    draw_col = 7 - col if self.player_color == "b" else col
                     image = self.images.get(piece)
                     if image:
-                        self.screen.blit(image, (offset_x + col * self.cell_size, offset_y + row * self.cell_size))
+                        self.screen.blit(image, (offset_x + draw_col * self.cell_size, offset_y + draw_row * self.cell_size))
 
     # Phân tích chuỗi quân cờ để lấy loại quân và màu sắc
     def parse_piece(self, piece_str):
