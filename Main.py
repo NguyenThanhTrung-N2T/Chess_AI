@@ -284,20 +284,50 @@ def reset_prolog():
 
 def choose_color_menu(screen):
     import pygame
-    font = pygame.font.Font("fonts/pixelmix_bold.ttf", 24)
-    w_rect = pygame.Rect(320, 250, 160, 80)
-    b_rect = pygame.Rect(520, 250, 160, 80)
+    font_title = pygame.font.Font("fonts/pixelmix_bold.ttf", 36)
+    font_btn = pygame.font.Font("fonts/pixelmix_bold.ttf", 24)
+    w_rect = pygame.Rect(320, 250, 160, 120)
+    b_rect = pygame.Rect(520, 250, 160, 120)
+    border_radius = 18
     running = True
+
+    # Load icon quân cờ
+    icon_w = pygame.image.load("images/w_king.png")
+    icon_b = pygame.image.load("images/b_king.png")
+    icon_w = pygame.transform.scale(icon_w, (60, 60))
+    icon_b = pygame.transform.scale(icon_b, (60, 60))
+
     while running:
         screen.fill((230, 230, 255))
-        txt = font.render("Choose your color", True, (60, 60, 60))
-        screen.blit(txt, (screen.get_width()//2 - txt.get_width()//2, 180))
-        pygame.draw.rect(screen, (255,255,255), w_rect)
-        pygame.draw.rect(screen, (80,80,80), b_rect)
-        txtw = font.render("White", True, (60,60,60))
-        txtb = font.render("Black", True, (255,255,255))
-        screen.blit(txtw, (w_rect.centerx - txtw.get_width()//2, w_rect.centery - txtw.get_height()//2))
-        screen.blit(txtb, (b_rect.centerx - txtb.get_width()//2, b_rect.centery - txtb.get_height()//2))
+        # Tiêu đề
+        txt = font_title.render("Choose Your Color", True, (60, 60, 60))
+        screen.blit(txt, (screen.get_width()//2 - txt.get_width()//2, 120))
+
+        mouse_pos = pygame.mouse.get_pos()
+        # Hiệu ứng hover
+        color_w = (255,255,255) if not w_rect.collidepoint(mouse_pos) else (220,220,220)
+        color_b = (80,80,80) if not b_rect.collidepoint(mouse_pos) else (120,120,120)
+        border_w = (180,180,180) if not w_rect.collidepoint(mouse_pos) else (120,180,255)
+        border_b = (40,40,40) if not b_rect.collidepoint(mouse_pos) else (120,180,255)
+
+        # Vẽ nút trắng
+        pygame.draw.rect(screen, border_w, w_rect.inflate(8,8), border_radius=border_radius)
+        pygame.draw.rect(screen, color_w, w_rect, border_radius=border_radius)
+        screen.blit(icon_w, (w_rect.centerx - icon_w.get_width()//2, w_rect.top + 10))
+        txtw = font_btn.render("White", True, (60,60,60))
+        screen.blit(txtw, (w_rect.centerx - txtw.get_width()//2, w_rect.bottom - 40))
+
+        # Vẽ nút đen
+        pygame.draw.rect(screen, border_b, b_rect.inflate(8,8), border_radius=border_radius)
+        pygame.draw.rect(screen, color_b, b_rect, border_radius=border_radius)
+        screen.blit(icon_b, (b_rect.centerx - icon_b.get_width()//2, b_rect.top + 10))
+        txtb = font_btn.render("Black", True, (255,255,255))
+        screen.blit(txtb, (b_rect.centerx - txtb.get_width()//2, b_rect.bottom - 40))
+
+        # Gợi ý
+        hint = font_btn.render("You play as...", True, (100,100,100))
+        screen.blit(hint, (screen.get_width()//2 - hint.get_width()//2, 200))
+
         pygame.display.flip()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
