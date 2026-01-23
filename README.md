@@ -28,6 +28,8 @@
 
 This project demonstrates how declarative programming (Prolog) can be effectively embedded within an imperative application (Python) to handle complex rule-based systems like Chess.
 
+The project was born out of a desire to explore the synergy between high-level logic programming and modern application development. By utilizing Prolog's powerful backtracking and pattern matching capabilities, the AI can evaluate board states with a clarity that purely imperative languages often struggle to express concisely. Meanwhile, Python provides the flexibility and rich ecosystem needed to deliver a smooth, engaging user experience.
+
 ## ✨ Key Features
 
 - **🎮 Multiple Game Modes**:
@@ -163,7 +165,16 @@ Please ensure your code follows the existing style (variable naming, comments) a
 - [ ] Network Multiplayer Mode.
 - [ ] Save/Load Game functionality.
 
-## 📄 License
+## � About the Authors
+
+**Pixel Chess AI** was developed by **Nguyen Thanh Trung (N2T)** as part of the **CPPLT (C++ Programming Language & Techniques)** final project for **Semester 4**.
+
+- **GitHub**: [NguyenThanhTrung-N2T](https://github.com/NguyenThanhTrung-N2T)
+- **Email**: [nguyentrung191225@gmail.com]
+
+We are passionate about AI, Game Development, and making complex logic accessible through clean design.
+
+## �📄 License
 
 Distributed under the **MIT License**. See `LICENSE` for more information.
 
